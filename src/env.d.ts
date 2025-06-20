@@ -12,3 +12,10 @@ export function isForbiddenUrl(url: string): boolean {
 }
 
 export const isFirefox = navigator.userAgent.includes('Firefox')
+
+interface ImportMetaEnv {
+  readonly VITE_FIRECRAWL_API_KEY: string
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
