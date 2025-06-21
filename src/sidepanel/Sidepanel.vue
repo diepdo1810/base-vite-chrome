@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { storageDemo } from '~/logic/storage'
 import { firecrawlScrapeHtml } from '~/logic/firecrawl'
+import CopilotChat from '~/components/CopilotChat.vue'
 
 const currentUrl = ref('Đang tải...')
 const htmlContent = ref('')
@@ -10,7 +11,7 @@ const hasError = ref(false)
 const errorMessage = ref('')
 
 function getCurrentTabUrl() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs: { url: string }[]) => {
     if (tabs && tabs[0]) {
       currentUrl.value = tabs[0].url || ''
     }
@@ -21,7 +22,7 @@ function handleTabActivated() {
   getCurrentTabUrl()
 }
 
-function handleTabUpdated(tabId, changeInfo, tab) {
+function handleTabUpdated(tabId: any, changeInfo: { url: string }, tab: { active: any }) {
   if (changeInfo.url && tab.active) {
     currentUrl.value = changeInfo.url
   }
@@ -64,7 +65,7 @@ async function readCurrentPage() {
 </script>
 
 <template>
-  <main class="w-full px-4 py-5 text-center text-gray-700">
+  <main v-if="false" class="w-full px-4 py-5 text-center text-gray-700">
     <Logo />
     <div>Sidepanel</div>
 
@@ -99,5 +100,9 @@ async function readCurrentPage() {
         <div v-html="htmlContent" />
       </div>
     </div>
+  </main>
+
+  <main v-else class="w-full px-4 py-5 text-center text-gray-700">
+    <CopilotChat />
   </main>
 </template>
