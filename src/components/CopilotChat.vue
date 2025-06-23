@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import ChatHeader from './ChatHeader.vue'
 import ChatLogo from './ChatLogo.vue'
@@ -6,12 +6,21 @@ import ChatFeatures from './ChatFeatures.vue'
 import ChatInput from './ChatInput.vue'
 import ChatControls from './ChatControls.vue'
 
+const props = defineProps({
+  attachedContext: {
+    type: String,
+    default: '',
+  },
+  onSendMessage: {
+    type: Function,
+    default: null,
+  },
+})
+
 // Reactive state
 const message = ref('')
 const selectedModel = ref('Claude Sonnet 3.7')
 const isRecording = ref(false)
-// eslint-disable-next-line unused-imports/no-unused-vars
-const attachedContext = ref('Sidepanel.vue')
 
 // Available models
 const models = [
@@ -26,6 +35,9 @@ function sendMessage() {
   if (message.value.trim()) {
     // eslint-disable-next-line no-console
     console.log('Sending message:', message.value)
+    if (props.onSendMessage) {
+      props.onSendMessage(message.value)
+    }
     // TODO: Implement message sending logic
     message.value = ''
   }
@@ -85,7 +97,7 @@ onMounted(() => {
         <span class="text-base">📎</span>
         <span class="text-gray-400">Add URL...</span>
         <span class="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
-          ✓ vnexpress.net/rac-ai-4899617.html
+          ✓ {{ attachedContext }}
         </span>
       </div>
 

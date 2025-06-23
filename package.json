@@ -32,13 +32,16 @@
   },
   "dependencies": {
     "@mendable/firecrawl-js": "^1.25.5",
-    "@types/chrome": "^0.0.326"
+    "axios": "^1.10.0",
+    "cheerio": "^1.1.0",
+    "robots-parser": "^3.0.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.27.0",
     "@ffflorian/jszip-cli": "^3.7.1",
     "@iconify/json": "^2.2.239",
     "@playwright/test": "^1.46.1",
+    "@types/chrome": "^0.0.326",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.5.0",
     "@types/webextension-polyfill": "^0.12.0",
