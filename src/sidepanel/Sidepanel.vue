@@ -1,23 +1,29 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { storageDemo } from '~/logic/storage'
-// import { firecrawlScrapeHtml } from '~/logic/firecrawl'
-import CopilotChat from '~/components/CopilotChat.vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import ChatInterface from '~/components/ChatInterface.vue'
 import { WebCrawler } from '~/logic/webcrawler'
+import pollinationsService from '~/services/pollinations'
 
+// Existing variables
 const currentUrl = ref('Đang tải...')
-const htmlContent = ref('')
 const isLoading = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
 const crawledContent = ref('')
-const showCrawledContent = ref(false)
-const htmlSelector = ref('')
+
+// New chat state variables
+const messages = ref<Array<{ role: 'user' | 'assistant', content: string }>>([])
+const currentMessage = ref('')
+const selectedModel = ref('GPT-4.1')
+const availableModels = ['GPT-4.1', 'GPT-4o', 'Claude Sonnet 3.7', 'Claude Haiku']
+const chatMode = ref('Ask')
+const currentFileName = ref('DanhMucGoiThauChiTiet.vue')
 
 function getCurrentTabUrl() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs: { url: string }[]) => {
     if (tabs && tabs[0]) {
       currentUrl.value = tabs[0].url || ''
+      updateFileName()
     }
   })
 }
@@ -43,170 +49,258 @@ onBeforeUnmount(() => {
   chrome.tabs.onUpdated.removeListener(handleTabUpdated)
 })
 
-async function readCurrentPage() {
-  if (!currentUrl.value || currentUrl.value === 'Đang tải...') {
-    // eslint-disable-next-line no-alert
-    alert('Không thể đọc trang. URL chưa sẵn sàng')
+// New chat functions
+async function sendMessage() {
+  if (!currentMessage.value.trim() || isLoading.value)
     return
-  }
 
+  const messageText = currentMessage.value.trim()
+
+  // Add user message to chat
+  messages.value.push({ role: 'user', content: messageText })
+  currentMessage.value = ''
   isLoading.value = true
   hasError.value = false
-  errorMessage.value = ''
 
   try {
-    const crawler = new WebCrawler({ maxDepth: 1, maxPages: 1, selector: htmlSelector.value })
-    const results = await crawler.crawl(currentUrl.value)
+    // Use improved crawling logic with new features
+    let articleContext = ''
+    let articleAnalysis = ''
 
-    if (results.length > 0) {
-      htmlContent.value = results[0].content
-    }
-    else {
-      throw new Error('No content found')
-    }
-  }
-  catch (error) {
-    hasError.value = true
-    errorMessage.value = error instanceof Error ? error.message : 'Lỗi không xác định'
-    console.error('Lỗi khi scrape trang:', error)
-  }
-  finally {
-    isLoading.value = false
-  }
-}
-
-// Handler for CopilotChat's sendMessage
-async function handleSendMessage(messageText: string) {
-  // eslint-disable-next-line no-alert
-  alert(`Đang gửi tin nhắn: ${messageText}`)
-  isLoading.value = true
-  hasError.value = false
-  errorMessage.value = ''
-
-  try {
-    // Only crawl if we have a URL and it's not already loading
     if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
-      const crawler = new WebCrawler({ maxDepth: 1, maxPages: 1 })
-      const results = await crawler.crawl(currentUrl.value)
+      const crawler = new WebCrawler({
+        maxDepth: 1,
+        maxPages: 1,
+        extractArticleData: true,
+        detectLanguage: true,
+        extractKeywords: true,
+      })
 
+      const results = await crawler.crawlWithCache(currentUrl.value)
       if (results.length > 0) {
-        crawledContent.value = results[0].content
-        // eslint-disable-next-line no-console
-        console.log('WebCrawler processed content:', `${crawledContent.value.substring(0, 100)}...`)
-        showCrawledContent.value = true
-        // Here you would typically send both the message and the crawled content
-        // to your AI service or backend
-        // For now we'll just log it
-        // eslint-disable-next-line no-console
-        console.log(`Sending message "${messageText}" with context from URL: ${currentUrl.value}`)
+        const result = results[0]
+        articleContext = result.content
+        crawledContent.value = articleContext
+
+        // Create detailed analysis for better AI response
+        if (result.article) {
+          const analysisParts = []
+          analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
+
+          if (result.article.author) {
+            analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
+          }
+
+          if (result.article.readingTime) {
+            analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
+          }
+
+          if (result.language) {
+            const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
+            analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
+          }
+
+          if (result.article.difficulty) {
+            const difficultyMap = {
+              easy: 'Dễ đọc',
+              medium: 'Trung bình',
+              hard: 'Khó đọc',
+            }
+            analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
+          }
+
+          if (result.keywords && result.keywords.length > 0) {
+            analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
+          }
+
+          articleAnalysis = analysisParts.join('\n')
+        }
       }
     }
+
+    // Simulate AI response (remove this line since we're using real AI now)
+    // await new Promise(resolve => setTimeout(resolve, 1500))
+
+    // Generate enhanced contextual response
+    const response = await generateCopilotResponse(messageText, articleContext, articleAnalysis)
+    messages.value.push({ role: 'assistant', content: response })
   }
   catch (error) {
     hasError.value = true
     errorMessage.value = error instanceof Error ? error.message : 'Lỗi không xác định'
-    console.error('Lỗi khi crawl trang:', error)
+    console.error('Lỗi khi gửi tin nhắn:', error)
   }
   finally {
     isLoading.value = false
   }
 }
-function toggleCrawledContent() {
-  showCrawledContent.value = !showCrawledContent.value
+
+async function generateCopilotResponse(messageText: string, contextContent: string, articleAnalysis?: string): Promise<string> {
+  // First message gets a greeting
+  if (messages.value.filter(m => m.role === 'assistant').length === 0) {
+    return 'Xin chào! Tôi là GitHub Copilot.\nBạn cần hỗ trợ gì về lập trình hoặc dự án của mình?'
+  }
+
+  // Check if this is an article suggestion request
+  const isArticleSuggestion = detectArticleSuggestion(messageText)
+
+  if (isArticleSuggestion && contextContent) {
+    try {
+      // Use Pollinations AI to analyze the article based on the request
+      const prompt = createArticlePrompt(messageText, contextContent, currentUrl.value)
+
+      const result = await pollinationsService.generateText({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are GitHub Copilot, a helpful AI assistant that analyzes articles and provides insightful responses. Respond in Vietnamese and be thorough but concise. Use emojis and proper formatting to make responses engaging.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        model: 'openai',
+      })
+
+      if (result.success && result.data) {
+        return result.data.content
+      }
+      else {
+        throw new Error(result.error || 'Failed to analyze article')
+      }
+    }
+    catch (error) {
+      console.error('Error calling Pollinations AI:', error)
+      return `Xin lỗi, tôi gặp lỗi khi phân tích bài viết: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+
+  // Default response for non-article requests
+  let response = `Tôi hiểu bạn đang hỏi về "${messageText}".`
+
+  if (articleAnalysis) {
+    response += `\n\n📋 **Phân tích bài viết hiện tại:**\n${articleAnalysis}`
+  }
+
+  if (contextContent) {
+    response += `\n\n📖 **Dựa trên nội dung bài viết**, tôi có thể giúp bạn:`
+    response += `\n• Giải thích các thuật ngữ khó hiểu`
+    response += `\n• Tóm tắt nội dung chính`
+    response += `\n• Trả lời câu hỏi về bài viết`
+    response += `\n• Phân tích quan điểm của tác giả`
+  }
+
+  response += `\n\nBạn có thể hỏi tôi bất kỳ điều gì về bài viết này!`
+
+  return response
+}
+
+// Helper function to detect if message is an article suggestion
+function detectArticleSuggestion(messageText: string): boolean {
+  const suggestionKeywords = [
+    'ask about this article',
+    'summarize this article',
+    'explain this article',
+    'main takeaways',
+    'generate questions about this article',
+    'related topics should i explore',
+    'provide a critical analysis',
+    'tóm tắt bài viết',
+    'giải thích bài viết',
+    'phân tích bài viết',
+  ]
+
+  const lowerText = messageText.toLowerCase()
+  return suggestionKeywords.some(keyword => lowerText.includes(keyword))
+}
+
+// Helper function to create appropriate prompt for AI
+function createArticlePrompt(messageText: string, content: string, url: string): string {
+  const lowerText = messageText.toLowerCase()
+
+  let taskDescription = ''
+
+  if (lowerText.includes('summarize') || lowerText.includes('tóm tắt')) {
+    taskDescription = 'summarize this article in a clear and concise way'
+  }
+  else if (lowerText.includes('explain') || lowerText.includes('giải thích')) {
+    taskDescription = 'explain this article in simple terms that anyone can understand'
+  }
+  else if (lowerText.includes('takeaways') || lowerText.includes('điểm chính')) {
+    taskDescription = 'identify the main takeaways and key points from this article'
+  }
+  else if (lowerText.includes('questions') || lowerText.includes('câu hỏi')) {
+    taskDescription = 'generate thoughtful questions about this article to help readers think deeper'
+  }
+  else if (lowerText.includes('related topics') || lowerText.includes('chủ đề liên quan')) {
+    taskDescription = 'suggest related topics and areas for further exploration based on this article'
+  }
+  else if (lowerText.includes('critical analysis') || lowerText.includes('phân tích phê bình')) {
+    taskDescription = 'provide a critical analysis of this article, including strengths, weaknesses, and different perspectives'
+  }
+  else if (lowerText.includes('ask about this article')) {
+    taskDescription = 'provide an overview of what you can help with regarding this article and offer suggestions for different types of analysis'
+  }
+  else {
+    taskDescription = 'help with the following request about this article'
+  }
+
+  return `
+Based on the following article, please ${taskDescription}.
+
+Article URL: ${url}
+Article Content:
+${content}
+
+User Request: ${messageText}
+
+Please provide a helpful and comprehensive response in Vietnamese. Use proper formatting with bullet points, emojis, and clear structure to make your response engaging and easy to read.`
+}
+
+function handleKeyPress(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    sendMessage()
+  }
+}
+
+// Handler for adding messages from article suggestions
+function addMessage(message: { role: 'user' | 'assistant', content: string }) {
+  messages.value.push(message)
+}
+
+// Update filename based on URL
+function updateFileName() {
+  try {
+    if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
+      const url = new URL(currentUrl.value)
+      currentFileName.value = url.pathname.split('/').pop() || url.hostname || 'Current Tab'
+    }
+  }
+  catch {
+    currentFileName.value = 'Current Tab'
+  }
 }
 </script>
 
 <template>
-  <main v-if="false" class="w-full px-4 py-5 text-center text-gray-700">
-    <Logo />
-    <div>Sidepanel</div>
-
-    <button
-      class="btn mt-2"
-      :disabled="isLoading || currentUrl === 'Đang tải...'"
-      @click="readCurrentPage"
-    >
-      {{ isLoading ? 'LOADING...' : 'READ' }}
-    </button>
-    <div v-if="false" class="mt-2">
-      <span class="opacity-50">Storage:</span> {{ storageDemo }}
-    </div>
-    <div class="mt-2">
-      <span class="opacity-50">Current URL:</span> {{ currentUrl }}
-    </div>
-
-    <!-- Hiển thị lỗi nếu có -->
-    <div v-if="hasError" class="mt-4 p-3 bg-red-100 text-red-700 rounded">
-      <p class="font-bold">
-        Lỗi khi đọc trang:
-      </p>
-      <p>{{ errorMessage }}</p>
-    </div>
-
-    <!-- Hiển thị nội dung HTML -->
-    <div v-if="htmlContent" class="mt-4">
-      <h3 class="text-lg font-medium mb-2">
-        Nội dung trang:
-      </h3>
-      <div class="text-left border p-3 rounded max-h-96 overflow-auto">
-        <div v-html="htmlContent" />
-      </div>
-    </div>
-  </main>
-
-  <main v-else class="w-full px-4 py-5 text-center text-gray-700">
-    <!-- Thêm phần nhập selector -->
-    <div class="bg-gray-800 p-2 mb-2 rounded-md">
-      <div class="flex items-center gap-2">
-        <input
-          v-model="htmlSelector"
-          type="text"
-          placeholder="CSS selector (ví dụ: #main, .content)"
-          class="w-full px-3 py-1 text-sm bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
-        >
-      </div>
-    </div>
-
-    <CopilotChat :attached-context="currentUrl" :on-send-message="handleSendMessage" />
-
-    <!-- Nút hiển thị/ẩn nội dung đã crawl -->
-    <div v-if="crawledContent" class="fixed top-4 right-4">
-      <button
-        class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs"
-        @click="toggleCrawledContent"
-      >
-        {{ showCrawledContent ? 'Ẩn nội dung' : 'Hiện nội dung' }}
-      </button>
-    </div>
-
-    <!-- Panel hiển thị crawledContent -->
-    <div
-      v-if="showCrawledContent && crawledContent"
-      class="fixed top-12 right-4 w-80 max-h-96 bg-white shadow-lg border border-gray-200 rounded-md overflow-auto z-50"
-    >
-      <div class="p-3">
-        <div class="flex justify-between items-center mb-2">
-          <h3 class="font-medium">
-            Nội dung đã crawl
-          </h3>
-          <button class="text-gray-500" @click="toggleCrawledContent">
-            ✕
-          </button>
-        </div>
-        <div class="text-sm text-left text-gray-700 whitespace-pre-wrap">
-          {{ crawledContent }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Optional loading indicator -->
-    <div v-if="isLoading" class="fixed bottom-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
-      Crawling page...
-    </div>
-
-    <!-- Optional error display -->
-    <div v-if="hasError" class="fixed bottom-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs">
-      Error: {{ errorMessage }}
-    </div>
-  </main>
+  <!-- Main Chat Interface -->
+  <ChatInterface
+    :messages="messages"
+    :current-message="currentMessage"
+    :is-loading="isLoading"
+    :has-error="hasError"
+    :error-message="errorMessage"
+    :selected-model="selectedModel"
+    :available-models="availableModels"
+    :chat-mode="chatMode"
+    :current-url="currentUrl"
+    @update:current-message="currentMessage = $event"
+    @update:selected-model="selectedModel = $event"
+    @update:chat-mode="chatMode = $event"
+    @send-message="sendMessage"
+    @key-press="handleKeyPress"
+    @add-message="addMessage"
+  />
 </template>

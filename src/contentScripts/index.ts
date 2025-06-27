@@ -4,6 +4,9 @@ import { createApp } from 'vue'
 import App from './views/App.vue'
 import { setupApp } from '~/logic/common-setup'
 
+// Import page content extractor
+import './pageContentExtractor'
+
 // Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
 (() => {
   console.info('[vitesse-webext] Hello world from content script')
