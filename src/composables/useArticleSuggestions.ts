@@ -2,6 +2,7 @@ import { computed, readonly, ref } from 'vue'
 import type { ArticleAnalysisResult, ArticleSuggestion, CurrentPageInfo } from '../types/article-suggestions'
 import { defaultArticleSuggestions } from '../data/article-suggestions'
 import pollinationsService from '../services/pollinations'
+import { extractPageContent } from '~/helpers/extractContent'
 
 export function useArticleSuggestions() {
   // State
@@ -210,50 +211,4 @@ Please provide a helpful and comprehensive response in Vietnamese. Format your r
     analyzeArticleWithSuggestion,
     analyzeWithCustomPrompt,
   }
-}
-
-/**
- * Function to be injected into page for content extraction
- */
-function extractPageContent(): string {
-  // Remove script and style elements
-  const scripts = document.querySelectorAll('script, style, nav, header, footer, aside')
-  scripts.forEach(el => el.remove())
-
-  // Try to find main content area
-  const contentSelectors = [
-    'article',
-    '[role="main"]',
-    'main',
-    '.content',
-    '.post-content',
-    '.article-content',
-    '.entry-content',
-    '#content',
-    '.main-content',
-  ]
-
-  let content = ''
-
-  for (const selector of contentSelectors) {
-    const element = document.querySelector(selector)
-    if (element) {
-      content = element.textContent || ''
-      if (content.length > 500) { // Ensure we have substantial content
-        break
-      }
-    }
-  }
-
-  // Fallback to body if no content found
-  if (!content || content.length < 500) {
-    content = document.body.textContent || ''
-  }
-
-  // Clean up the content
-  return content
-    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-    .replace(/\n+/g, '\n') // Replace multiple newlines with single newline
-    .trim()
-    .substring(0, 10000) // Limit content length to avoid API limits
 }

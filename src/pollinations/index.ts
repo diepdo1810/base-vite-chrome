@@ -24,8 +24,5 @@ export type {
 // Export data
 export { defaultArticleSuggestions } from '../data/article-suggestions'
 
-// Export demo component
-export { default as PollinationsDemo } from '../components/PollinationsDemo.vue'
-
 // Export article suggestions component
 export { default as ArticleSuggestions } from '../components/ArticleSuggestions.vue'
