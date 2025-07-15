@@ -19,33 +19,31 @@ defineEmits<Emits>()
 <template>
   <div
     v-if="isVisible"
-    style="border: 1px solid #e5e7eb; border-radius: 6px; background-color: #f9fafb; margin-top: 16px; overflow: hidden;"
+    class="mt-4 rounded-xl border border-neutral-700 bg-neutral-800 overflow-hidden shadow-lg"
   >
     <!-- Header -->
     <div
-      style="padding: 12px 16px; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; cursor: pointer;"
+      class="px-5 py-3 bg-neutral-700 border-b border-neutral-600 cursor-pointer text-neutral-200 text-base font-semibold tracking-wide hover:bg-neutral-600 transition-colors"
       @click="$emit('headerClick')"
     >
-      <span style="font-size: 14px; font-weight: 500; color: #374151;">Ask about this article</span>
+      <span class="i-ic:outline-article mr-2 text-cyan-400 text-lg align-middle" />
+      Hỏi về bài báo này
     </div>
 
     <!-- Suggestions List -->
-    <div style="padding: 8px;">
+    <div class="p-3 flex flex-col gap-2">
       <button
         v-for="suggestion in suggestions"
         :key="suggestion.id"
         :disabled="isAnalyzing"
         type="button"
-        style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background-color: transparent; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; text-align: left; position: relative;"
-        :style="{ opacity: isAnalyzing ? '0.6' : '1', cursor: isAnalyzing ? 'not-allowed' : 'pointer' }"
+        class="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-transparent bg-neutral-900 text-neutral-100 hover:bg-cyan-950 hover:border-cyan-400 transition-all duration-150 text-left shadow group disabled:opacity-60 disabled:cursor-not-allowed"
         @click="$emit('suggestionClick', suggestion)"
-        @mouseover="(e) => { if (!isAnalyzing && e.target) (e.target as HTMLElement).style.backgroundColor = '#e5e7eb' }"
-        @mouseleave="(e) => { if (e.target) (e.target as HTMLElement).style.backgroundColor = 'transparent' }"
       >
-        <span style="font-size: 16px; flex-shrink: 0; width: 20px; text-align: center;">{{ suggestion.icon }}</span>
-        <span style="flex: 1; font-size: 14px; color: #374151; line-height: 1.4;">{{ suggestion.title }}</span>
-        <span v-if="isAnalyzing" style="flex-shrink: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;">
-          <div style="width: 12px; height: 12px; border: 2px solid #e5e7eb; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;" />
+        <span class="text-xl flex-shrink-0 text-cyan-400">{{ suggestion.icon }}</span>
+        <span class="flex-1 text-base leading-snug">{{ suggestion.title }}</span>
+        <span v-if="isAnalyzing" class="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+          <span class="i-svg-spinners:3-dots-bounce text-cyan-400 text-lg animate-spin" />
         </span>
       </button>
     </div>

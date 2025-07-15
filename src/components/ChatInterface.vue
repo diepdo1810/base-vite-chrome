@@ -3,6 +3,10 @@ import { computed, watchEffect } from 'vue'
 import type { ArticleSuggestion } from '../types/article-suggestions'
 import { useArticleSuggestions } from '../composables/useArticleSuggestions'
 import ArticleSuggestions from './ArticleSuggestions.vue'
+// @ts-ignore
+import MarkdownIt from 'markdown-it'
+
+const md = new MarkdownIt({ linkify: true, breaks: true })
 
 interface Message {
   role: 'user' | 'assistant'
@@ -111,187 +115,184 @@ const shouldShowSuggestions = computed(() => {
 
 <template>
   <!-- Main Chat Interface -->
-  <div class="h-screen bg-white flex flex-col">
-    <!-- Header -->
-    <div class="bg-gray-50 border-b px-4 py-3 text-center font-medium text-gray-700 border-gray-200">
-      CHAT
-    </div>
+  <div class="h-screen w-full flex items-center justify-center bg-neutral-900">
+    <div class="w-full max-w-xl h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-neutral-800 border border-neutral-700 overflow-hidden">
+      <!-- Header -->
+      <div class="bg-neutral-800 border-b border-neutral-700 px-4 py-3 text-center font-semibold text-neutral-100 tracking-wide text-lg">
+        AI CHAT
+      </div>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col">
-      <!-- Messages Area -->
-      <div class="flex-1 overflow-y-auto p-6">
-        <!-- Empty State / Welcome Screen -->
-        <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center space-y-6">
-          <!-- Copilot Icon -->
-          <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-            </svg>
-          </div>
-
-          <!-- Title -->
-          <h2 class="text-2xl font-medium text-gray-800">
-            Ask Copilot
-          </h2>
-
-          <!-- Description -->
-          <p class="text-gray-600 max-w-sm leading-relaxed">
-            Copilot is powered by AI, so mistakes are possible.<br>
-            Review output carefully before use.
-          </p>
-
-          <!-- Helper Text -->
-          <div class="text-sm text-gray-500 space-y-2">
-            <p>📎 or type # to attach context</p>
-            <p>📡 @ to chat with extensions</p>
-            <p class="ml-4">
-              Type / to use commands
-            </p>
-          </div>
-
-          <!-- Article Suggestions for Empty State -->
-          <ArticleSuggestions
-            v-if="shouldShowEmptySuggestions"
-            :suggestions="suggestions"
-            :is-analyzing="isAnalyzing"
-            :is-visible="shouldShowEmptySuggestions"
-            @suggestion-click="handleSuggestionClick"
-            @header-click="handleAskAboutArticleClick"
-          />
-        </div>
-
-        <!-- Chat Messages -->
-        <div v-else class="space-y-4">
-          <div v-for="(message, index) in messages" :key="index">
-            <!-- User Message -->
-            <div v-if="message.role === 'user'" class="flex justify-end">
-              <div class="bg-blue-600 text-white rounded-lg px-4 py-3 max-w-xs">
-                {{ message.content }}
-              </div>
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col min-h-0">
+        <!-- Messages Area -->
+        <div class="flex-1 min-h-0 flex flex-col">
+          <!-- Empty State / Welcome Screen -->
+          <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center space-y-6">
+            <!-- Copilot Icon -->
+            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center shadow-lg">
+              <span class="i-ic:round-smart-toy text-white text-5xl" />
             </div>
 
-            <!-- Assistant Message -->
-            <div v-else>
-              <!-- Header with name and button -->
-              <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-                <div class="flex items-center gap-2">
-                  <span class="font-medium text-gray-800">GitHub Copilot</span>
-                  <span class="text-lg">🧠</span>
+            <!-- Title -->
+            <h2 class="text-2xl font-semibold text-neutral-100">
+              Ask AI
+            </h2>
+
+            <!-- Description -->
+            <p class="text-neutral-300 max-w-sm leading-relaxed">
+              AI is powered by advanced models, so mistakes are possible.<br>
+              Review output carefully before use.
+            </p>
+
+            <!-- Helper Text -->
+            <div class="text-sm text-neutral-400 space-y-2">
+              <p>📎 or type # to attach context</p>
+              <p>📡 @ to chat with extensions</p>
+              <p class="ml-4">
+                Type / to use commands
+              </p>
+            </div>
+            <!-- ArticleSuggestions đã bị ẩn -->
+          </div>
+
+          <!-- Chat Messages -->
+          <div v-else class="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto pr-1">
+            <transition-group name="fade-chat" tag="div">
+              <div v-for="(message, index) in messages" :key="index" class="w-full flex">
+                <!-- User Message -->
+                <div v-if="message.role === 'user'" class="flex w-full justify-end items-start gap-2">
+                  <div class="max-w-[70%] bg-cyan-500 text-white rounded-2xl rounded-br-md px-5 py-3 shadow-lg text-base font-medium ml-auto animate-fade-in">
+                    {{ message.content }}
+                  </div>
+                  <span class="i-ic:round-person text-cyan-400 text-2xl mt-1" />
+                </div>
+                <!-- Assistant Message -->
+                <div v-else class="flex w-full justify-start items-start gap-2 mt-2">
+                  <span class="i-ic:round-smart-toy text-cyan-400 text-2xl mt-1" />
+                  <div class="max-w-[70%] bg-neutral-700 text-neutral-100 rounded-2xl rounded-bl-md px-5 py-3 shadow-lg text-base font-medium animate-fade-in prose prose-invert break-words" v-html="md.render(message.content)"></div>
                 </div>
               </div>
-
-              <!-- Message content -->
-              <div class="text-gray-800 whitespace-pre-line">
-                {{ message.content }}
+            </transition-group>
+            <!-- Loading indicator -->
+            <div v-if="isLoading">
+              <div class="flex items-center gap-2 mb-2 pb-2 border-b border-neutral-700">
+                <span class="i-ic:round-smart-toy text-cyan-400 text-xl" />
+                <span class="font-medium text-neutral-100">AI Assistant</span>
+              </div>
+              <div class="flex items-center gap-2 text-cyan-300">
+                <div class="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
+                <div class="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style="animation-delay: 0.1s" />
+                <div class="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style="animation-delay: 0.2s" />
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Article Suggestions -->
-          <ArticleSuggestions
-            v-if="shouldShowSuggestions"
-            :suggestions="suggestions"
-            :is-analyzing="isAnalyzing"
-            :is-visible="shouldShowSuggestions"
-            @suggestion-click="handleSuggestionClick"
-            @header-click="handleAskAboutArticleClick"
-          />
+        <!-- Input Area -->
+        <div class="border-t border-neutral-700 bg-neutral-800 p-4 space-y-4">
+          <!-- Context Display Row -->
+          <div class="flex items-center gap-3">
+            <span class="text-neutral-400 text-sm">Add URL...</span>
+            <div class="flex items-center gap-2 bg-neutral-700 px-3 py-1 rounded border border-neutral-600">
+              <span class="text-cyan-400">✓</span>
+              <span class="text-neutral-200 text-sm font-medium">{{ currentUrl }}</span>
+            </div>
+          </div>
 
-          <!-- Loading indicator -->
-          <div v-if="isLoading">
-            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-800">GitHub Copilot</span>
-                <span class="text-lg">🧠</span>
-              </div>
+          <!-- Ask AI Row -->
+          <div class="flex items-center justify-between">
+            <span class="text-neutral-400 text-sm">Ask AI</span>
+          </div>
+
+          <!-- Controls Row -->
+          <div class="flex items-center gap-4">
+            <!-- Ask/Agent Toggle -->
+            <div class="flex bg-neutral-700 rounded border border-neutral-600">
+              <button
+                class="px-4 py-2 text-sm font-medium rounded-l transition-colors"
+                :class="chatMode === 'Ask' ? 'bg-neutral-800 shadow-sm border-r border-neutral-600 text-cyan-400' : 'text-neutral-400'"
+                @click="$emit('update:chatMode', 'Ask')"
+              >
+                Ask
+              </button>
+              <button
+                class="px-4 py-2 text-sm font-medium rounded-r transition-colors"
+                :class="chatMode === 'Agent' ? 'bg-neutral-800 shadow-sm border-l border-neutral-600 text-cyan-400' : 'text-neutral-400'"
+                @click="$emit('update:chatMode', 'Agent')"
+              >
+                Agent
+              </button>
             </div>
-            <div class="flex items-center gap-2 text-gray-500">
-              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s" />
-              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s" />
+
+            <!-- Model Selection -->
+            <div class="flex items-center gap-2">
+              <select
+                :value="selectedModel"
+                class="text-sm border border-neutral-600 rounded px-3 py-2 bg-neutral-800 text-neutral-100 focus:outline-none focus:border-cyan-400 min-w-40"
+                @change="$emit('update:selectedModel', ($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="model in availableModels" :key="model" :value="model">
+                  {{ model }}
+                </option>
+              </select>
             </div>
+          </div>
+
+          <!-- Input Row -->
+          <div class="flex items-center gap-3">
+            <span class="text-neutral-500 text-lg">@</span>
+
+            <textarea
+              :value="currentMessage"
+              placeholder="Ask AI..."
+              class="flex-1 resize-none border border-neutral-600 rounded-md px-3 py-2 text-sm bg-neutral-900 text-neutral-100 focus:outline-none focus:border-cyan-400 min-h-10 max-h-32 shadow-inner"
+              rows="1"
+              @input="$emit('update:currentMessage', ($event.target as HTMLTextAreaElement).value)"
+              @keydown="$emit('keyPress', $event)"
+            />
+
+            <button
+              class="text-cyan-400 text-2xl hover:text-cyan-300 transition-colors disabled:text-neutral-600"
+              :disabled="!currentMessage.trim() || isLoading"
+              @click="$emit('sendMessage')"
+            >
+              <span class="i-ic:round-send" />
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Input Area -->
-      <div class="border-t border-gray-200 bg-white p-4 space-y-4">
-        <!-- Context Display Row -->
-        <div class="flex items-center gap-3">
-          <span class="text-gray-600 text-sm">Add URL...</span>
-          <div class="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded border">
-            <span class="text-blue-600">✓</span>
-            <span class="text-gray-700 text-sm font-medium">{{ currentUrl }}</span>
-          </div>
-        </div>
-
-        <!-- Ask Copilot Row -->
-        <div class="flex items-center justify-between">
-          <span class="text-gray-600 text-sm">Ask Copilot</span>
-        </div>
-
-        <!-- Controls Row -->
-        <div class="flex items-center gap-4">
-          <!-- Ask/Agent Toggle -->
-          <div class="flex bg-gray-100 rounded border">
-            <button
-              class="px-4 py-2 text-sm font-medium rounded-l transition-colors"
-              :class="chatMode === 'Ask' ? 'bg-white shadow-sm border-r' : 'text-gray-600'"
-              @click="$emit('update:chatMode', 'Ask')"
-            >
-              Ask
-            </button>
-            <button
-              class="px-4 py-2 text-sm font-medium rounded-r transition-colors"
-              :class="chatMode === 'Agent' ? 'bg-white shadow-sm border-l' : 'text-gray-600'"
-              @click="$emit('update:chatMode', 'Agent')"
-            >
-              Agent
-            </button>
-          </div>
-
-          <!-- Model Selection -->
-          <div class="flex items-center gap-2">
-            <select
-              :value="selectedModel"
-              class="text-sm border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:border-blue-500 min-w-40"
-              @change="$emit('update:selectedModel', ($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="model in availableModels" :key="model" :value="model">
-                {{ model }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Input Row -->
-        <div class="flex items-center gap-3">
-          <span class="text-gray-400 text-lg">@</span>
-
-          <textarea
-            :value="currentMessage"
-            placeholder="Ask Copilot..."
-            class="flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500 min-h-10 max-h-32"
-            rows="1"
-            @input="$emit('update:currentMessage', ($event.target as HTMLTextAreaElement).value)"
-            @keydown="$emit('keyPress', $event)"
-          />
-
-          <button
-            class="text-blue-600 text-xl hover:text-blue-700 transition-colors disabled:text-gray-400"
-            :disabled="!currentMessage.trim() || isLoading"
-            @click="$emit('sendMessage')"
-          >
-            ⏩
-          </button>
-        </div>
+      <!-- Error Toast -->
+      <div v-if="hasError" class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-md shadow-lg z-50">
+        Error: {{ errorMessage }}
       </div>
-    </div>
-
-    <!-- Error Toast -->
-    <div v-if="hasError" class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-md shadow-lg z-50">
-      Error: {{ errorMessage }}
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-chat-enter-active, .fade-chat-leave-active {
+  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.fade-chat-enter-from, .fade-chat-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.fade-chat-enter-to, .fade-chat-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+.animate-fade-in {
+  animation: fadeInUp 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

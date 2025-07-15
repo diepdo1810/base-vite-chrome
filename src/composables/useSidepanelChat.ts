@@ -109,16 +109,17 @@ export function useSidepanelChat() {
   }
 
   async function generateCopilotResponse(messageText: string, contextContent: string, articleAnalysis?: string): Promise<string> {
-    if (messages.value.filter(m => m.role === 'assistant').length === 0) {
-      return 'Xin chào! Tôi là GitHub Copilot.\nBạn cần hỗ trợ gì về lập trình hoặc dự án của mình?'
-    }
-    const isArticleSuggestion = detectArticleSuggestion(messageText)
-    if (isArticleSuggestion && contextContent) {
+    // Luôn chờ dữ liệu crawl và AI trả lời, không trả về response mặc định nào
+    if (contextContent) {
       try {
-        const prompt = createArticlePrompt(messageText, contextContent, currentUrl.value)
+        // Prompt trực tiếp từ user, không dùng createArticlePrompt
+        const prompt = `Bài báo:
+${contextContent}
+
+Câu hỏi của tôi: ${messageText}`
         const result = await generateArticleAIResponse({
           messages: [
-            { role: 'system', content: 'You are GitHub Copilot, a helpful AI assistant that analyzes articles and provides insightful responses. Respond in Vietnamese and be thorough but concise. Use emojis and proper formatting to make responses engaging.' },
+            { role: 'system', content: 'Bạn là một trợ lý AI giúp phân tích bài báo và trả lời câu hỏi dựa trên nội dung bài báo. Trả lời bằng tiếng Việt, ngắn gọn, súc tích, có thể dùng emoji.' },
             { role: 'user', content: prompt },
           ],
           model: 'openai',
@@ -129,24 +130,17 @@ export function useSidepanelChat() {
         else {
           throw new Error(result.error || 'Failed to analyze article')
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.error('Error calling Pollinations AI:', error)
         return `Xin lỗi, tôi gặp lỗi khi phân tích bài viết: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
     }
-    let response = `Tôi hiểu bạn đang hỏi về "${messageText}".`
+    // Nếu không có dữ liệu crawl, fallback trả lời đơn giản
+    let response = ''
     if (articleAnalysis) {
       response += `\n\n📋 **Phân tích bài viết hiện tại:**\n${articleAnalysis}`
     }
-    if (contextContent) {
-      response += `\n\n📖 **Dựa trên nội dung bài viết**, tôi có thể giúp bạn:`
-      response += `\n• Giải thích các thuật ngữ khó hiểu`
-      response += `\n• Tóm tắt nội dung chính`
-      response += `\n• Trả lời câu hỏi về bài viết`
-      response += `\n• Phân tích quan điểm của tác giả`
-    }
-    response += `\n\nBạn có thể hỏi tôi bất kỳ điều gì về bài viết này!`
+    response += `\n\nHiện tại tôi không lấy được nội dung bài báo. Bạn có thể hỏi lại sau hoặc thử tải lại trang.`
     return response
   }
 
