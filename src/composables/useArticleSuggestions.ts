@@ -2,7 +2,7 @@ import { computed, readonly, ref } from 'vue'
 import type { ArticleAnalysisResult, ArticleSuggestion, CurrentPageInfo } from '../types/article-suggestions'
 import { defaultArticleSuggestions } from '../data/article-suggestions'
 import pollinationsService from '../services/pollinations'
-import { extractPageContent } from '~/helpers/extractContent'
+import { extractPageContent } from '~/utils/extractContent'
 
 export function useArticleSuggestions() {
   // State

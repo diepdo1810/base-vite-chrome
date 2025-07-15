@@ -1,7 +1,7 @@
 // Content script để hỗ trợ extract page content
 // File này sẽ được inject vào các trang web
 
-import { extractPageContent } from '~/helpers/extractContent'
+import { extractPageContent } from '~/utils/extractContent'
 
 // Listen for messages from extension
 chrome.runtime.onMessage.addListener((request: any, _sender: any, sendResponse: any) => {

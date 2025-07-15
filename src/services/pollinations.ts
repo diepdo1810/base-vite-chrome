@@ -1,5 +1,5 @@
 import axios from 'axios'
-import pollinationsAxios from '../helpers/axios'
+import pollinationsAxios from '../utils/axios'
 import type {
   GeneratedAudio,
   GeneratedImage,

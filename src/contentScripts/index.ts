@@ -2,7 +2,7 @@
 import { onMessage } from 'webext-bridge/content-script'
 import { createApp } from 'vue'
 import App from './views/App.vue'
-import { setupApp } from '~/logic/common-setup'
+import { setupApp } from '~/utils/common-setup'
 
 // Import page content extractor
 import './pageContentExtractor'

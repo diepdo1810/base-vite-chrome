@@ -2,7 +2,7 @@
 export { default as pollinationsService } from '../services/pollinations'
 export { usePollinations } from '../composables/usePollinations'
 export { useArticleSuggestions } from '../composables/useArticleSuggestions'
-export { default as pollinationsAxios } from '../helpers/axios'
+export { default as pollinationsAxios } from '../utils/axios'
 
 // Export types
 export type {
