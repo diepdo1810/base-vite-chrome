@@ -6,6 +6,8 @@ import { setupApp } from '~/utils/common-setup'
 
 // Import page content extractor
 import './pageContentExtractor'
+// Import highlight selection handler
+import './highlightSelectionHandler'
 
 // Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
 (() => {

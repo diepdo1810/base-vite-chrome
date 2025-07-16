@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ChatInterface from '~/components/ChatInterface.vue'
 import { useSidepanelChat } from '~/composables/useSidepanelChat'
+import { onMounted, onBeforeUnmount } from 'vue'
 
 const {
   currentUrl,
@@ -16,6 +17,15 @@ const {
   handleKeyPress,
   addMessage,
 } = useSidepanelChat()
+
+onMounted(() => {
+  chrome.runtime.onMessage.addListener((request: any, _sender: any, _sendResponse: (response?: any) => void) => {
+    if (request.action === 'ask-ai-selection' && request.text) {
+      currentMessage.value = request.text
+      sendMessage()
+    }
+  })
+})
 </script>
 
 <template>

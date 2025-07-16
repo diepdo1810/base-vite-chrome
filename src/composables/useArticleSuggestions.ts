@@ -3,6 +3,7 @@ import type { ArticleAnalysisResult, ArticleSuggestion, CurrentPageInfo } from '
 import { defaultArticleSuggestions } from '../data/article-suggestions'
 import pollinationsService from '../services/pollinations'
 import { extractPageContent } from '~/utils/extractContent'
+import { generateArticleSuggestions } from '~/services/aiService'
 
 export function useArticleSuggestions() {
   // State
@@ -10,6 +11,11 @@ export function useArticleSuggestions() {
   const currentPageInfo = ref<CurrentPageInfo | null>(null)
   const analysisError = ref<string | null>(null)
   const lastAnalysisResult = ref<string | null>(null)
+
+  // State cho gợi ý thông minh
+  const smartSuggestions = ref<string[]>([])
+  const isLoadingSuggestions = ref(false)
+  const suggestionsError = ref<string | null>(null)
 
   // Computed
   const suggestions = computed(() => defaultArticleSuggestions)
@@ -194,12 +200,33 @@ Please provide a helpful and comprehensive response in Vietnamese. Format your r
     return analyzeArticleWithSuggestion(customSuggestion)
   }
 
+  /**
+   * Lấy gợi ý câu hỏi/thảo luận thông minh từ AI dựa trên nội dung bài báo
+   */
+  const fetchSmartSuggestions = async (num = 5) => {
+    isLoadingSuggestions.value = true
+    suggestionsError.value = null
+    try {
+      const pageContent = await crawlCurrentPage()
+      const result = await generateArticleSuggestions(pageContent, num)
+      smartSuggestions.value = result
+    } catch (error) {
+      suggestionsError.value = error instanceof Error ? error.message : 'Lỗi không xác định khi lấy gợi ý.'
+      smartSuggestions.value = []
+    } finally {
+      isLoadingSuggestions.value = false
+    }
+  }
+
   return {
     // State
     isAnalyzing: readonly(isAnalyzing),
     currentPageInfo: readonly(currentPageInfo),
     analysisError: readonly(analysisError),
     lastAnalysisResult: readonly(lastAnalysisResult),
+    smartSuggestions: readonly(smartSuggestions),
+    isLoadingSuggestions: readonly(isLoadingSuggestions),
+    suggestionsError: readonly(suggestionsError),
 
     // Computed
     suggestions: readonly(suggestions),
@@ -210,5 +237,6 @@ Please provide a helpful and comprehensive response in Vietnamese. Format your r
     clearError,
     analyzeArticleWithSuggestion,
     analyzeWithCustomPrompt,
+    fetchSmartSuggestions,
   }
 }
