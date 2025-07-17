@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, watchEffect, ref } from 'vue'
 import type { ArticleSuggestion } from '../types/article-suggestions'
 import { useArticleSuggestions } from '../composables/useArticleSuggestions'
 import ArticleSuggestions from './ArticleSuggestions.vue'
@@ -43,7 +43,46 @@ const {
   isAnalyzing,
   isPageInfoAvailable,
   setCurrentPageInfo,
+  crawlCurrentPage,
 } = useArticleSuggestions()
+
+const isCrawled = ref(false)
+const showCrawlPopup = ref(false)
+const dontShowCrawlPopup = ref(localStorage.getItem('dontShowCrawlPopup') === '1')
+
+function handleCrawlClick() {
+  // Gọi hàm crawlCurrentPage từ useArticleSuggestions
+  isCrawled.value = false
+  crawlCurrentPage().then((content: string) => {
+    isCrawled.value = true
+    // Có thể lưu content vào state nếu cần
+    // Hiện thông báo thành công nếu muốn
+    alert('Đã lấy nội dung bài báo!')
+  }).catch(() => {
+    alert('Không lấy được nội dung bài báo!')
+  })
+}
+
+function handleResetCrawl() {
+  isCrawled.value = false
+}
+
+function handleSendMessage() {
+  if (!isCrawled.value && !dontShowCrawlPopup.value) {
+    showCrawlPopup.value = true
+    return
+  }
+  emit('sendMessage')
+}
+
+function handleDontShowCrawlPopup() {
+  dontShowCrawlPopup.value = true
+  localStorage.setItem('dontShowCrawlPopup', '1')
+  showCrawlPopup.value = false
+}
+function handleCloseCrawlPopup() {
+  showCrawlPopup.value = false
+}
 
 // Set current page info when component mounts or URL changes
 function updatePageInfo() {
@@ -190,8 +229,26 @@ const shouldShowSuggestions = computed(() => {
 
         <!-- Input Area -->
         <div class="border-t border-neutral-700 bg-neutral-800 p-4 space-y-4">
-          <!-- Context Display Row -->
-          <div class="flex items-center gap-3">
+          <!-- Nút Crawler -->
+          <div class="flex items-center gap-3 mb-2">
+            <button
+              class="px-4 py-2 rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition"
+              @click="handleCrawlClick"
+              :disabled="isCrawled"
+            >
+              🕷️ Lấy nội dung bài báo
+            </button>
+            <button
+              v-if="isCrawled"
+              class="px-4 py-2 rounded bg-neutral-400 text-neutral-800 font-semibold hover:bg-neutral-500 transition"
+              @click="handleResetCrawl"
+            >
+              Bỏ nội dung bài báo
+            </button>
+            <span v-if="isCrawled" class="text-green-500 text-sm ml-2">Đã lấy nội dung!</span>
+          </div>
+          <!-- Context Display Row chỉ hiện khi đã crawl -->
+          <div v-if="isCrawled" class="flex items-center gap-3">
             <span class="text-neutral-400 text-sm">Add URL...</span>
             <div class="flex items-center gap-2 bg-neutral-700 px-3 py-1 rounded border border-neutral-600">
               <span class="text-cyan-400">✓</span>
@@ -254,11 +311,20 @@ const shouldShowSuggestions = computed(() => {
             <button
               class="text-cyan-400 text-2xl hover:text-cyan-300 transition-colors disabled:text-neutral-600"
               :disabled="!currentMessage.trim() || isLoading"
-              @click="$emit('sendMessage')"
+              @click="handleSendMessage"
             >
               <span class="i-ic:round-send" />
             </button>
           </div>
+        </div>
+      </div>
+      <!-- Popup hướng dẫn -->
+      <div v-if="showCrawlPopup" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-xs w-full text-center">
+          <div class="text-lg font-semibold mb-2 text-neutral-800">Bạn muốn thảo luận về bài báo?</div>
+          <div class="text-neutral-600 mb-4">Hãy nhấn nút <b>Lấy nội dung bài báo</b> trước khi chat để AI có thể phân tích nội dung bài báo.<br>Nếu chỉ muốn chat thông thường, bạn có thể bỏ qua.</div>
+          <button class="px-4 py-2 rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition mb-2 w-full" @click="handleCloseCrawlPopup">Đã hiểu</button>
+          <button class="px-4 py-2 rounded bg-neutral-300 text-neutral-700 font-semibold hover:bg-neutral-400 transition w-full" @click="handleDontShowCrawlPopup">Không cần hiển thị lại</button>
         </div>
       </div>
 

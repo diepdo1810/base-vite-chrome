@@ -53,10 +53,12 @@ defineEmits<Emits>()
 
       <!-- Smart Suggestions (AI) -->
       <template v-if="smartSuggestions && smartSuggestions.length">
-        <div class="mt-2 mb-1 text-cyan-400 text-sm font-semibold">Gợi ý thông minh từ AI:</div>
+        <div class="mt-2 mb-1 text-cyan-400 text-sm font-semibold">
+          Gợi ý thông minh từ AI:
+        </div>
         <button
           v-for="(sug, idx) in smartSuggestions"
-          :key="'smart-' + idx"
+          :key="`smart-${idx}`"
           :disabled="isLoadingSuggestions"
           type="button"
           class="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-transparent bg-neutral-900 text-neutral-100 hover:bg-cyan-950 hover:border-cyan-400 transition-all duration-150 text-left shadow group disabled:opacity-60 disabled:cursor-not-allowed"
@@ -66,8 +68,12 @@ defineEmits<Emits>()
           <span class="flex-1 text-base leading-snug">{{ sug }}</span>
         </button>
       </template>
-      <div v-if="isLoadingSuggestions" class="text-cyan-400 text-sm mt-2">Đang lấy gợi ý thông minh...</div>
-      <div v-if="suggestionsError" class="text-red-400 text-sm mt-2">{{ suggestionsError }}</div>
+      <div v-if="isLoadingSuggestions" class="text-cyan-400 text-sm mt-2">
+        Đang lấy gợi ý thông minh...
+      </div>
+      <div v-if="suggestionsError" class="text-red-400 text-sm mt-2">
+        {{ suggestionsError }}
+      </div>
     </div>
   </div>
 </template>

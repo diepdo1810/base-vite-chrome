@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import ChatInterface from '~/components/ChatInterface.vue'
 import { useSidepanelChat } from '~/composables/useSidepanelChat'
-import { onMounted, onBeforeUnmount } from 'vue'
 
 const {
   currentUrl,
@@ -22,7 +22,8 @@ onMounted(() => {
   chrome.runtime.onMessage.addListener((request: any, _sender: any, _sendResponse: (response?: any) => void) => {
     if (request.action === 'ask-ai-selection' && request.text) {
       currentMessage.value = request.text
-      sendMessage()
+      // Gửi prompt, không crawl bài báo
+      sendMessage(true, true)
     }
   })
 })

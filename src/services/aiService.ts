@@ -47,7 +47,7 @@ export function createArticlePrompt(messageText: string, content: string, url: s
  * @returns Mảng string các câu hỏi/thảo luận
  */
 export async function generateArticleSuggestions(content: string, numSuggestions = 5): Promise<string[]> {
-  const prompt = `Dựa trên nội dung bài báo sau, hãy gợi ý ${numSuggestions} câu hỏi hoặc chủ đề thảo luận phù hợp, đa dạng, giúp người đọc hiểu sâu hơn hoặc mở rộng suy nghĩ. Trả lời bằng tiếng Việt, chỉ liệt kê câu hỏi, không giải thích thêm.\n\nNội dung bài báo:\n${content}`;
+  const prompt = `Dựa trên nội dung bài báo sau, hãy gợi ý ${numSuggestions} câu hỏi hoặc chủ đề thảo luận phù hợp, đa dạng, giúp người đọc hiểu sâu hơn hoặc mở rộng suy nghĩ. Trả lời bằng tiếng Việt, chỉ liệt kê câu hỏi, không giải thích thêm.\n\nNội dung bài báo:\n${content}`
   const response = await pollinationsService.generateText({
     messages: [
       { role: 'system', content: 'Bạn là trợ lý AI chuyên gợi ý câu hỏi thảo luận cho bài báo.' },
@@ -55,15 +55,16 @@ export async function generateArticleSuggestions(content: string, numSuggestions
     ],
     model: 'openai',
     jsonMode: false,
-  });
+  })
   if (response.success && response.data) {
     // Tách các câu hỏi/thảo luận từ kết quả trả về
     // Giả định mỗi câu hỏi nằm trên 1 dòng hoặc đánh số
     const lines = response.data.content.split(/\n|\r/)
       .map(line => line.replace(/^\d+\.|^-|•/g, '').trim())
-      .filter(line => line.length > 0);
-    return lines;
-  } else {
-    return [];
+      .filter(line => line.length > 0)
+    return lines
+  }
+  else {
+    return []
   }
 }

@@ -14,6 +14,8 @@ export function useSidepanelChat() {
   const availableModels = ['GPT-4.1', 'GPT-4o', 'Claude Sonnet 3.7', 'Claude Haiku']
   const chatMode = ref('Ask')
   const currentFileName = ref('Current Tab')
+  const isCrawled = ref(false)
+  function setCrawled(val: boolean) { isCrawled.value = val }
 
   const { messages, currentMessage, setCurrentMessage, addMessage, clearMessages, undoMessage, redoMessage } = useChatState()
 
@@ -47,55 +49,66 @@ export function useSidepanelChat() {
     chrome.tabs.onUpdated.removeListener(handleTabUpdated)
   })
 
-  async function sendMessage() {
+  async function sendMessage(forceSend = false, skipCrawl = false) {
     if (!currentMessage.value.trim() || isLoading.value)
       return
-
+    if (!forceSend && !isCrawled.value) return false
     const messageText = currentMessage.value.trim()
     addMessage({ role: 'user', content: messageText })
     setCurrentMessage('')
     isLoading.value = true
     hasError.value = false
-
     try {
-      let articleContext = ''
-      let articleAnalysis = ''
-
-      if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
-        const results = await crawlUrlWithCache(currentUrl.value, {
-          maxDepth: 1,
-          maxPages: 1,
-          extractArticleData: true,
-          detectLanguage: true,
-          extractKeywords: true,
+      let response = ''
+      if (skipCrawl) {
+        // Gửi prompt trực tiếp cho AI, không cần context bài báo
+        const aiRes = await generateArticleAIResponse({
+          messages: [
+            { role: 'system', content: 'Bạn là một trợ lý AI giúp phân tích, giải thích, tóm tắt hoặc trả lời các câu hỏi về đoạn văn bản do người dùng cung cấp. Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu, có thể dùng emoji.' },
+            { role: 'user', content: messageText }
+          ],
+          model: 'openai'
         })
-        if (results.length > 0) {
-          const result = results[0]
-          articleContext = result.content
-          crawledContent.value = articleContext
-          if (result.article) {
-            const analysisParts = []
-            analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
-            if (result.article.author)
-              analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
-            if (result.article.readingTime)
-              analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
-            if (result.language) {
-              const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
-              analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
+        response = aiRes.data?.content || 'Không nhận được phản hồi từ AI.'
+      } else {
+        let articleContext = ''
+        let articleAnalysis = ''
+        if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
+          const results = await crawlUrlWithCache(currentUrl.value, {
+            maxDepth: 1,
+            maxPages: 1,
+            extractArticleData: true,
+            detectLanguage: true,
+            extractKeywords: true,
+          })
+          if (results.length > 0) {
+            const result = results[0]
+            articleContext = result.content
+            crawledContent.value = articleContext
+            if (result.article) {
+              const analysisParts = []
+              analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
+              if (result.article.author)
+                analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
+              if (result.article.readingTime)
+                analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
+              if (result.language) {
+                const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
+                analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
+              }
+              if (result.article.difficulty) {
+                const difficultyMap = { easy: 'Dễ đọc', medium: 'Trung bình', hard: 'Khó đọc' }
+                analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
+              }
+              if (result.keywords && result.keywords.length > 0) {
+                analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
+              }
+              articleAnalysis = analysisParts.join('\n')
             }
-            if (result.article.difficulty) {
-              const difficultyMap = { easy: 'Dễ đọc', medium: 'Trung bình', hard: 'Khó đọc' }
-              analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
-            }
-            if (result.keywords && result.keywords.length > 0) {
-              analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
-            }
-            articleAnalysis = analysisParts.join('\n')
           }
         }
+        response = await generateCopilotResponse(messageText, articleContext, articleAnalysis)
       }
-      const response = await generateCopilotResponse(messageText, articleContext, articleAnalysis)
       addMessage({ role: 'assistant', content: response })
     }
     catch (error) {
@@ -223,6 +236,8 @@ Câu hỏi của tôi: ${messageText}`
     availableModels,
     chatMode,
     currentFileName,
+    isCrawled,
+    setCrawled,
     // Methods
     sendMessage,
     generateCopilotResponse,

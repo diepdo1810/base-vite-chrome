@@ -210,10 +210,12 @@ Please provide a helpful and comprehensive response in Vietnamese. Format your r
       const pageContent = await crawlCurrentPage()
       const result = await generateArticleSuggestions(pageContent, num)
       smartSuggestions.value = result
-    } catch (error) {
+    }
+    catch (error) {
       suggestionsError.value = error instanceof Error ? error.message : 'Lỗi không xác định khi lấy gợi ý.'
       smartSuggestions.value = []
-    } finally {
+    }
+    finally {
       isLoadingSuggestions.value = false
     }
   }
@@ -238,5 +240,6 @@ Please provide a helpful and comprehensive response in Vietnamese. Format your r
     analyzeArticleWithSuggestion,
     analyzeWithCustomPrompt,
     fetchSmartSuggestions,
+    crawlCurrentPage,
   }
 }
