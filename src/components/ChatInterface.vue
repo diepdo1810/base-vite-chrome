@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, watchEffect, ref } from 'vue'
-import type { ArticleSuggestion } from '../types/article-suggestions'
-import { useArticleSuggestions } from '../composables/useArticleSuggestions'
-import ArticleSuggestions from './ArticleSuggestions.vue'
-// @ts-ignore
+// @ts-expect-error markdown-it type is not available
 import MarkdownIt from 'markdown-it'
 
 const md = new MarkdownIt({ linkify: true, breaks: true })
@@ -29,59 +26,22 @@ interface Emits {
   (e: 'update:currentMessage', value: string): void
   (e: 'update:selectedModel', value: string): void
   (e: 'update:chatMode', value: string): void
-  (e: 'sendMessage'): void
-  (e: 'keyPress', event: KeyboardEvent): void
+  (e: 'sendMessage', isCrawlerOn: boolean): void
+  (e: 'keyPress', event: KeyboardEvent, isCrawlerOn: boolean): void
   (e: 'addMessage', message: Message): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-// Initialize article suggestions
-const {
-  suggestions,
-  isAnalyzing,
-  isPageInfoAvailable,
-  setCurrentPageInfo,
-  crawlCurrentPage,
-} = useArticleSuggestions()
+const isCrawlerOn = ref(false)
 
-const isCrawled = ref(false)
-const showCrawlPopup = ref(false)
-const dontShowCrawlPopup = ref(localStorage.getItem('dontShowCrawlPopup') === '1')
-
-function handleCrawlClick() {
-  // Gọi hàm crawlCurrentPage từ useArticleSuggestions
-  isCrawled.value = false
-  crawlCurrentPage().then((content: string) => {
-    isCrawled.value = true
-    // Có thể lưu content vào state nếu cần
-    // Hiện thông báo thành công nếu muốn
-    alert('Đã lấy nội dung bài báo!')
-  }).catch(() => {
-    alert('Không lấy được nội dung bài báo!')
-  })
-}
-
-function handleResetCrawl() {
-  isCrawled.value = false
+function handleToggleCrawler() {
+  isCrawlerOn.value = !isCrawlerOn.value
 }
 
 function handleSendMessage() {
-  if (!isCrawled.value && !dontShowCrawlPopup.value) {
-    showCrawlPopup.value = true
-    return
-  }
-  emit('sendMessage')
-}
-
-function handleDontShowCrawlPopup() {
-  dontShowCrawlPopup.value = true
-  localStorage.setItem('dontShowCrawlPopup', '1')
-  showCrawlPopup.value = false
-}
-function handleCloseCrawlPopup() {
-  showCrawlPopup.value = false
+  emit('sendMessage', isCrawlerOn.value)
 }
 
 // Set current page info when component mounts or URL changes
@@ -97,58 +57,6 @@ function updatePageInfo() {
 // Watch for URL changes
 watchEffect(() => {
   updatePageInfo()
-})
-
-// Handle suggestion click
-function handleSuggestionClick(suggestion: ArticleSuggestion) {
-  // Fill the input with the suggestion text
-  emit('update:currentMessage', suggestion.title)
-
-  // Focus on the input
-  setTimeout(() => {
-    const textarea = document.querySelector('textarea[placeholder="Ask Copilot..."]') as HTMLTextAreaElement
-    if (textarea) {
-      textarea.focus()
-      // Set cursor at the end
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-    }
-  }, 50)
-}
-
-// Handle "Ask about this article" header click
-function handleAskAboutArticleClick() {
-  // Fill the input with the text
-  emit('update:currentMessage', 'Ask about this article')
-
-  // Focus on the input (optional)
-  setTimeout(() => {
-    const textarea = document.querySelector('textarea[placeholder="Ask Copilot..."]') as HTMLTextAreaElement
-    if (textarea) {
-      textarea.focus()
-      // Set cursor at the end
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-    }
-  }, 50)
-}
-
-// Show suggestions for empty state
-const shouldShowEmptySuggestions = computed(() => {
-  return props.messages.length === 0 && isPageInfoAvailable.value && !isAnalyzing.value
-})
-
-// Show suggestions at the end only if the last message is from assistant and we're not loading
-const shouldShowSuggestions = computed(() => {
-  if (!isPageInfoAvailable.value || isAnalyzing.value || props.isLoading) {
-    return false
-  }
-
-  if (props.messages.length === 0) {
-    return false // Empty state uses shouldShowEmptySuggestions
-  }
-
-  // Only show if last message is from assistant (completed response)
-  const lastMessage = props.messages[props.messages.length - 1]
-  return lastMessage && lastMessage.role === 'assistant'
 })
 </script>
 
@@ -229,38 +137,20 @@ const shouldShowSuggestions = computed(() => {
 
         <!-- Input Area -->
         <div class="border-t border-neutral-700 bg-neutral-800 p-4 space-y-4">
-          <!-- Nút Crawler -->
+          <!-- Nút bật/tắt Crawler -->
           <div class="flex items-center gap-3 mb-2">
             <button
-              class="px-4 py-2 rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition"
-              @click="handleCrawlClick"
-              :disabled="isCrawled"
+              class="px-4 py-2 rounded font-semibold transition"
+              :class="isCrawlerOn ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-neutral-400 text-neutral-800 hover:bg-neutral-500'"
+              @click="handleToggleCrawler"
             >
-              🕷️ Lấy nội dung bài báo
+              {{ isCrawlerOn ? '🕷️ Đang bật Crawler (kèm nội dung bài báo)' : 'Tắt Crawler (chỉ chat AI)' }}
             </button>
-            <button
-              v-if="isCrawled"
-              class="px-4 py-2 rounded bg-neutral-400 text-neutral-800 font-semibold hover:bg-neutral-500 transition"
-              @click="handleResetCrawl"
-            >
-              Bỏ nội dung bài báo
-            </button>
-            <span v-if="isCrawled" class="text-green-500 text-sm ml-2">Đã lấy nội dung!</span>
           </div>
-          <!-- Context Display Row chỉ hiện khi đã crawl -->
-          <div v-if="isCrawled" class="flex items-center gap-3">
-            <span class="text-neutral-400 text-sm">Add URL...</span>
-            <div class="flex items-center gap-2 bg-neutral-700 px-3 py-1 rounded border border-neutral-600">
-              <span class="text-cyan-400">✓</span>
-              <span class="text-neutral-200 text-sm font-medium">{{ currentUrl }}</span>
-            </div>
-          </div>
-
           <!-- Ask AI Row -->
           <div class="flex items-center justify-between">
             <span class="text-neutral-400 text-sm">Ask AI</span>
           </div>
-
           <!-- Controls Row -->
           <div class="flex items-center gap-4">
             <!-- Ask/Agent Toggle -->
@@ -280,7 +170,6 @@ const shouldShowSuggestions = computed(() => {
                 Agent
               </button>
             </div>
-
             <!-- Model Selection -->
             <div class="flex items-center gap-2">
               <select
@@ -294,20 +183,17 @@ const shouldShowSuggestions = computed(() => {
               </select>
             </div>
           </div>
-
           <!-- Input Row -->
           <div class="flex items-center gap-3">
             <span class="text-neutral-500 text-lg">@</span>
-
             <textarea
               :value="currentMessage"
               placeholder="Ask AI..."
               class="flex-1 resize-none border border-neutral-600 rounded-md px-3 py-2 text-sm bg-neutral-900 text-neutral-100 focus:outline-none focus:border-cyan-400 min-h-10 max-h-32 shadow-inner"
               rows="1"
               @input="$emit('update:currentMessage', ($event.target as HTMLTextAreaElement).value)"
-              @keydown="$emit('keyPress', $event)"
+              @keydown="$emit('keyPress', $event, isCrawlerOn)"
             />
-
             <button
               class="text-cyan-400 text-2xl hover:text-cyan-300 transition-colors disabled:text-neutral-600"
               :disabled="!currentMessage.trim() || isLoading"
@@ -318,16 +204,6 @@ const shouldShowSuggestions = computed(() => {
           </div>
         </div>
       </div>
-      <!-- Popup hướng dẫn -->
-      <div v-if="showCrawlPopup" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-        <div class="bg-white rounded-xl shadow-lg p-6 max-w-xs w-full text-center">
-          <div class="text-lg font-semibold mb-2 text-neutral-800">Bạn muốn thảo luận về bài báo?</div>
-          <div class="text-neutral-600 mb-4">Hãy nhấn nút <b>Lấy nội dung bài báo</b> trước khi chat để AI có thể phân tích nội dung bài báo.<br>Nếu chỉ muốn chat thông thường, bạn có thể bỏ qua.</div>
-          <button class="px-4 py-2 rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition mb-2 w-full" @click="handleCloseCrawlPopup">Đã hiểu</button>
-          <button class="px-4 py-2 rounded bg-neutral-300 text-neutral-700 font-semibold hover:bg-neutral-400 transition w-full" @click="handleDontShowCrawlPopup">Không cần hiển thị lại</button>
-        </div>
-      </div>
-
       <!-- Error Toast -->
       <div v-if="hasError" class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-md shadow-lg z-50">
         Error: {{ errorMessage }}

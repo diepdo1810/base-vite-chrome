@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 function openOptionsPage() {
   browser.runtime.openOptionsPage()
 }

@@ -61,7 +61,6 @@ const PURPOSES = [
 ]
 
 let askAiPopover: HTMLDivElement | null = null
-let selectedPurpose = PURPOSES[0].key
 
 // Các phong cách trả lời
 const STYLES = [
@@ -116,6 +115,63 @@ function createAskAiPopover() {
   divider.style.margin = '8px 0'
   askAiPopover.appendChild(divider)
 
+  // Nút gợi ý câu hỏi
+  const suggestBtn = document.createElement('button')
+  suggestBtn.textContent = 'Gợi ý câu hỏi 🤖'
+  suggestBtn.style.display = 'block'
+  suggestBtn.style.width = 'calc(100% - 36px)'
+  suggestBtn.style.margin = '8px 0 0 18px'
+  suggestBtn.style.background = '#f0f6ff'
+  suggestBtn.style.border = '1px solid #2563eb'
+  suggestBtn.style.borderRadius = '6px'
+  suggestBtn.style.padding = '8px 10px'
+  suggestBtn.style.textAlign = 'left'
+  suggestBtn.style.cursor = 'pointer'
+  suggestBtn.style.fontSize = '14px'
+  suggestBtn.style.color = '#2563eb'
+  askAiPopover.appendChild(suggestBtn)
+
+  // Vùng hiển thị loading/gợi ý
+  const suggestResultDiv = document.createElement('div')
+  suggestResultDiv.style.padding = '4px 18px 0 18px'
+  suggestResultDiv.style.fontSize = '14px'
+  suggestResultDiv.style.color = '#2563eb'
+  askAiPopover.appendChild(suggestResultDiv)
+
+  suggestBtn.onclick = async () => {
+    suggestBtn.disabled = true
+    suggestResultDiv.textContent = 'Đang lấy gợi ý...'
+    try {
+      const suggestions = await generateArticleSuggestions(lastSelectionText, 3)
+      if (suggestions.length === 0) {
+        suggestResultDiv.textContent = 'Không có gợi ý phù hợp.'
+      } else {
+        suggestResultDiv.innerHTML = ''
+        suggestions.forEach((sug) => {
+          const btn = document.createElement('button')
+          btn.textContent = sug
+          btn.style.display = 'block'
+          btn.style.width = '100%'
+          btn.style.background = '#fff'
+          btn.style.border = '1px solid #2563eb'
+          btn.style.borderRadius = '6px'
+          btn.style.padding = '8px 10px'
+          btn.style.margin = '4px 0'
+          btn.style.textAlign = 'left'
+          btn.style.cursor = 'pointer'
+          btn.style.fontSize = '14px'
+          btn.style.color = '#2563eb'
+          btn.onclick = () => handleSmartSuggestionClick(sug)
+          suggestResultDiv.appendChild(btn)
+        })
+      }
+    } catch (e) {
+      suggestResultDiv.textContent = 'Lỗi khi lấy gợi ý.'
+    } finally {
+      suggestBtn.disabled = false
+    }
+  }
+
   // Chọn phong cách trả lời
   const styleLabel = document.createElement('div')
   styleLabel.textContent = 'Phong cách trả lời:'
@@ -143,8 +199,8 @@ function createAskAiPopover() {
     styleSelect.appendChild(opt)
   })
   styleSelect.value = selectedStyle
-  styleSelect.onchange = (e) => {
-    selectedStyle = (e.target as HTMLSelectElement).value
+  styleSelect.onchange = () => {
+    selectedStyle = (styleSelect.value as string);
   }
   askAiPopover.appendChild(styleSelect)
 
@@ -168,8 +224,6 @@ function hideAskAiPopover() {
 }
 
 function handlePurposeClick(purposeKey: string) {
-  selectedPurpose = purposeKey
-  if (!lastSelectionText) return hideAskAiPopover()
   let prompt = ''
   let stylePrompt = ''
   switch (selectedStyle) {
@@ -214,74 +268,7 @@ function handlePurposeClick(purposeKey: string) {
 }
 
 // --- Gợi ý thông minh từ AI cho đoạn bôi đen ---
-let smartSuggestionBtns: HTMLButtonElement[] = []
-let isLoadingSmartSuggestions = false
 let suggestTimeout: ReturnType<typeof setTimeout> | null = null
-
-function handleSelectionMouseup() {
-  if (suggestTimeout) clearTimeout(suggestTimeout)
-  suggestTimeout = setTimeout(() => {
-    const selection = window.getSelection()
-    if (!selection) return
-    const text = selection.toString().trim()
-    if (text && text.length > 0 && text.length <= 1000) {
-      fetchAndShowSmartSuggestions(text)
-    }
-  }, 200)
-}
-
-document.addEventListener('mouseup', handleSelectionMouseup)
-
-// Sửa fetchAndShowSmartSuggestions dùng pollinations nội bộ
-async function fetchAndShowSmartSuggestions(text: string) {
-  smartSuggestionBtns.forEach(btn => btn.remove())
-  smartSuggestionBtns = []
-  if (askAiPopover) {
-    let loadingDiv = askAiPopover.querySelector('.ai-suggest-loading') as HTMLDivElement
-    if (!loadingDiv) {
-      loadingDiv = document.createElement('div')
-      loadingDiv.className = 'ai-suggest-loading'
-      loadingDiv.style.color = '#2563eb'
-      loadingDiv.style.fontSize = '13px'
-      loadingDiv.style.padding = '4px 18px 0 18px'
-      askAiPopover.appendChild(loadingDiv)
-    }
-    loadingDiv.textContent = 'Đang lấy gợi ý thông minh...'
-  }
-  isLoadingSmartSuggestions = true
-  try {
-    const suggestions = await generateArticleSuggestions(text, 3)
-    if (askAiPopover) {
-      const loadingDiv = askAiPopover.querySelector('.ai-suggest-loading')
-      if (loadingDiv) loadingDiv.remove()
-    }
-    suggestions.forEach((sug, idx) => {
-      const btn = document.createElement('button')
-      btn.textContent = sug
-      btn.style.display = 'block'
-      btn.style.width = 'calc(100% - 36px)'
-      btn.style.margin = '4px 0 0 18px'
-      btn.style.background = '#f0f6ff'
-      btn.style.border = '1px solid #2563eb'
-      btn.style.borderRadius = '6px'
-      btn.style.padding = '8px 10px'
-      btn.style.textAlign = 'left'
-      btn.style.cursor = 'pointer'
-      btn.style.fontSize = '14px'
-      btn.style.color = '#2563eb'
-      btn.onclick = () => handleSmartSuggestionClick(sug)
-      askAiPopover?.appendChild(btn)
-      smartSuggestionBtns.push(btn)
-    })
-  } catch (e) {
-    if (askAiPopover) {
-      const loadingDiv = askAiPopover.querySelector('.ai-suggest-loading') as HTMLDivElement
-      if (loadingDiv) loadingDiv.textContent = 'Không lấy được gợi ý thông minh.'
-    }
-  } finally {
-    isLoadingSmartSuggestions = false
-  }
-}
 
 function handleSmartSuggestionClick(suggestion: string) {
   // Gửi prompt: "Hãy trả lời/thảo luận về: ..." kèm phong cách
@@ -309,43 +296,85 @@ function handleSmartSuggestionClick(suggestion: string) {
   hideAskAiButton()
 }
 
-// Thay đổi: khi có selection, hiển thị popover thay vì nút
-function handleSelectionChange() {
+function handleSelectionMouseup() {
+  if (suggestTimeout) clearTimeout(suggestTimeout)
+  suggestTimeout = setTimeout(() => {
+    const selection = window.getSelection();
+    if (!selection) {
+      hideAskAiButton();
+      return;
+    }
+    const text = selection.toString().trim();
+    if (text && text.length > 0 && text.length <= 1000) {
+      lastSelectionText = text;
+      const rect = getSelectionRect();
+      if (rect && rect.width > 0 && rect.height > 0) {
+        showAskAiButton(rect);
+        // KHÔNG gọi hideAskAiPopover ở đây nữa
+        return;
+      }
+    }
+    hideAskAiButton();
+    // KHÔNG gọi hideAskAiPopover ở đây nữa
+  }, 200);
+}
+
+document.addEventListener('mouseup', handleSelectionMouseup)
+
+document.addEventListener('selectionchange', () => {
+  // Nếu selection bị mất thì ẩn nút
   const selection = window.getSelection()
-  if (!selection)
-    return hideAskAiPopover()
-  const text = selection.toString().trim()
-  if (text && text.length > 0 && text.length <= 1000) {
-    lastSelectionText = text
+  if (!selection || selection.toString().trim() === '') {
+    hideAskAiButton()
+    // KHÔNG gọi hideAskAiPopover ở đây nữa
+  }
+})
+
+function repositionAskAiPopover() {
+  if (askAiPopover && askAiPopover.style.display === 'block') {
     const rect = getSelectionRect()
     if (rect && rect.width > 0 && rect.height > 0) {
       showAskAiPopover(rect)
-      return
     }
   }
-  hideAskAiPopover()
 }
 
-document.addEventListener('selectionchange', handleSelectionChange)
-document.addEventListener('scroll', hideAskAiPopover, true)
-window.addEventListener('resize', hideAskAiPopover)
+document.addEventListener('scroll', () => {
+  hideAskAiButton()
+  repositionAskAiPopover()
+}, true)
+window.addEventListener('resize', repositionAskAiPopover)
+
 document.addEventListener('mousedown', (e) => {
-  if (askAiPopover && !askAiPopover.contains(e.target as Node)) {
+  // Chỉ ẩn popover nếu click ra ngoài popover và ngoài nút Hỏi AI
+  if (
+    askAiPopover &&
+    askAiPopover.style.display === 'block' &&
+    !askAiPopover.contains(e.target as Node) &&
+    askAiButton !== e.target
+  ) {
+    hideAskAiPopover()
+  }
+})
+document.addEventListener('dblclick', (e) => {
+  // Ẩn popover nếu double click ra ngoài popover và ngoài nút Hỏi AI
+  if (
+    askAiPopover &&
+    askAiPopover.style.display === 'block' &&
+    !askAiPopover.contains(e.target as Node) &&
+    askAiButton !== e.target
+  ) {
     hideAskAiPopover()
   }
 })
 
-// Xử lý sự kiện click nút để gửi message sang extension
 function handleAskAiClick() {
   if (!lastSelectionText)
     return
-  const prompt = `Hãy đọc và giải thích đoạn văn bản sau cho tôi một cách dễ hiểu, ngắn gọn, súc tích. Nếu có thể, hãy tóm tắt ý chính hoặc phân tích ý nghĩa của đoạn này.\n\nĐoạn văn:\n${lastSelectionText}`
-  chrome.runtime.sendMessage({
-    action: 'ask-ai-selection',
-    text: prompt,
-    source: 'content-script',
-  })
-  hideAskAiButton()
+  const rect = getSelectionRect()
+  if (rect && rect.width > 0 && rect.height > 0) {
+    showAskAiPopover(rect)
+  }
 }
 
 function attachClickHandler() {
@@ -353,5 +382,4 @@ function attachClickHandler() {
   btn.removeEventListener('click', handleAskAiClick)
   btn.addEventListener('click', handleAskAiClick)
 }
-
 attachClickHandler()

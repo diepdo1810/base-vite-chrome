@@ -14,18 +14,18 @@ export function useSidepanelChat() {
   const availableModels = ['GPT-4.1', 'GPT-4o', 'Claude Sonnet 3.7', 'Claude Haiku']
   const chatMode = ref('Ask')
   const currentFileName = ref('Current Tab')
-  const isCrawled = ref(false)
-  function setCrawled(val: boolean) { isCrawled.value = val }
+  const isCrawlerOn = ref(false)
+  function setCrawlerOn(val: boolean) { isCrawlerOn.value = val }
 
   const { messages, currentMessage, setCurrentMessage, addMessage, clearMessages, undoMessage, redoMessage } = useChatState()
 
   function getCurrentTabUrl() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: { url: string }[]) => {
       if (tabs && tabs[0]) {
-        currentUrl.value = tabs[0].url || ''
-        updateFileName()
+        currentUrl.value = tabs[0].url || '';
+        updateFileName();
       }
-    })
+    });
   }
 
   function handleTabActivated() {
@@ -49,10 +49,9 @@ export function useSidepanelChat() {
     chrome.tabs.onUpdated.removeListener(handleTabUpdated)
   })
 
-  async function sendMessage(forceSend = false, skipCrawl = false) {
+  async function sendMessage(isCrawler: boolean) {
     if (!currentMessage.value.trim() || isLoading.value)
       return
-    if (!forceSend && !isCrawled.value) return false
     const messageText = currentMessage.value.trim()
     addMessage({ role: 'user', content: messageText })
     setCurrentMessage('')
@@ -60,7 +59,7 @@ export function useSidepanelChat() {
     hasError.value = false
     try {
       let response = ''
-      if (skipCrawl) {
+      if (!isCrawler) {
         // Gửi prompt trực tiếp cho AI, không cần context bài báo
         const aiRes = await generateArticleAIResponse({
           messages: [
@@ -126,10 +125,7 @@ export function useSidepanelChat() {
     if (contextContent) {
       try {
         // Prompt trực tiếp từ user, không dùng createArticlePrompt
-        const prompt = `Bài báo:
-${contextContent}
-
-Câu hỏi của tôi: ${messageText}`
+        const prompt = `Bài báo:\n${contextContent}\n\nCâu hỏi của tôi: ${messageText}`
         const result = await generateArticleAIResponse({
           messages: [
             { role: 'system', content: 'Bạn là một trợ lý AI giúp phân tích bài báo và trả lời câu hỏi dựa trên nội dung bài báo. Trả lời bằng tiếng Việt, ngắn gọn, súc tích, có thể dùng emoji.' },
@@ -157,57 +153,10 @@ Câu hỏi của tôi: ${messageText}`
     return response
   }
 
-  function detectArticleSuggestion(messageText: string): boolean {
-    const suggestionKeywords = [
-      'ask about this article',
-      'summarize this article',
-      'explain this article',
-      'main takeaways',
-      'generate questions about this article',
-      'related topics should i explore',
-      'provide a critical analysis',
-      'tóm tắt bài viết',
-      'giải thích bài viết',
-      'phân tích bài viết',
-    ]
-    const lowerText = messageText.toLowerCase()
-    return suggestionKeywords.some(keyword => lowerText.includes(keyword))
-  }
-
-  function createArticlePrompt(messageText: string, content: string, url: string): string {
-    const lowerText = messageText.toLowerCase()
-    let taskDescription = ''
-    if (lowerText.includes('summarize') || lowerText.includes('tóm tắt')) {
-      taskDescription = 'summarize this article in a clear and concise way'
-    }
-    else if (lowerText.includes('explain') || lowerText.includes('giải thích')) {
-      taskDescription = 'explain this article in simple terms that anyone can understand'
-    }
-    else if (lowerText.includes('takeaways') || lowerText.includes('điểm chính')) {
-      taskDescription = 'identify the main takeaways and key points from this article'
-    }
-    else if (lowerText.includes('questions') || lowerText.includes('câu hỏi')) {
-      taskDescription = 'generate thoughtful questions about this article to help readers think deeper'
-    }
-    else if (lowerText.includes('related topics') || lowerText.includes('chủ đề liên quan')) {
-      taskDescription = 'suggest related topics and areas for further exploration based on this article'
-    }
-    else if (lowerText.includes('critical analysis') || lowerText.includes('phân tích phê bình')) {
-      taskDescription = 'provide a critical analysis of this article, including strengths, weaknesses, and different perspectives'
-    }
-    else if (lowerText.includes('ask about this article')) {
-      taskDescription = 'provide an overview of what you can help with regarding this article and offer suggestions for different types of analysis'
-    }
-    else {
-      taskDescription = 'help with the following request about this article'
-    }
-    return `\nBased on the following article, please ${taskDescription}.\n\nArticle URL: ${url}\nArticle Content:\n${content}\n\nUser Request: ${messageText}\n\nPlease provide a helpful and comprehensive response in Vietnamese. Use proper formatting with bullet points, emojis, and clear structure to make your response engaging and easy to read.`
-  }
-
-  function handleKeyPress(event: KeyboardEvent) {
+  function handleKeyPress(event: KeyboardEvent, isCrawler: boolean) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      sendMessage()
+      sendMessage(isCrawler)
     }
   }
 
@@ -236,8 +185,8 @@ Câu hỏi của tôi: ${messageText}`
     availableModels,
     chatMode,
     currentFileName,
-    isCrawled,
-    setCrawled,
+    isCrawlerOn,
+    setCrawlerOn,
     // Methods
     sendMessage,
     generateCopilotResponse,
