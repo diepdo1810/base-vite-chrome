@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import ChatInterface from '~/components/ChatInterface.vue'
 import { useSidepanelChat } from '~/composables/useSidepanelChat'
 
@@ -16,14 +16,29 @@ const {
   sendMessage,
   handleKeyPress,
   addMessage,
+  isCrawlerOn,
+  setCrawlerOn,
 } = useSidepanelChat()
+
+// Đồng bộ trạng thái bật/tắt crawler từ ChatInterface
+function handleUpdateCrawlerOn(val: boolean) {
+  setCrawlerOn(val)
+}
+
+function handleSendMessage(isCrawler: boolean) {
+  sendMessage(isCrawler)
+}
+
+function handleKeyPressWrapper(event: KeyboardEvent, isCrawler: boolean) {
+  handleKeyPress(event, isCrawler)
+}
 
 onMounted(() => {
   chrome.runtime.onMessage.addListener((request: any, _sender: any, _sendResponse: (response?: any) => void) => {
     if (request.action === 'ask-ai-selection' && request.text) {
       currentMessage.value = request.text
       // Gửi prompt, không crawl bài báo
-      sendMessage(true, true)
+      sendMessage(false)
     }
   })
 })
@@ -41,11 +56,13 @@ onMounted(() => {
     :available-models="availableModels"
     :chat-mode="chatMode"
     :current-url="currentUrl"
+    :is-crawler-on="isCrawlerOn"
     @update:current-message="val => currentMessage = val"
     @update:selected-model="val => selectedModel = val"
     @update:chat-mode="val => chatMode = val"
-    @send-message="sendMessage"
-    @key-press="handleKeyPress"
+    @update:is-crawler-on="handleUpdateCrawlerOn"
+    @send-message="handleSendMessage"
+    @key-press="handleKeyPressWrapper"
     @add-message="addMessage"
   />
 </template>

@@ -20,6 +20,7 @@ interface Props {
   availableModels: string[]
   chatMode: string
   currentUrl: string
+  isCrawlerOn: boolean // thêm prop này
 }
 
 interface Emits {
@@ -29,28 +30,31 @@ interface Emits {
   (e: 'sendMessage', isCrawlerOn: boolean): void
   (e: 'keyPress', event: KeyboardEvent, isCrawlerOn: boolean): void
   (e: 'addMessage', message: Message): void
+  (e: 'update:isCrawlerOn', value: boolean): void // thêm emit này
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const isCrawlerOn = ref(false)
+// Xoá local state isCrawlerOn, dùng prop thay thế
+// const isCrawlerOn = ref(false)
 
 function handleToggleCrawler() {
-  isCrawlerOn.value = !isCrawlerOn.value
+  // isCrawlerOn.value = !isCrawlerOn.value
+  emit('update:isCrawlerOn', !props.isCrawlerOn)
 }
 
 function handleSendMessage() {
-  emit('sendMessage', isCrawlerOn.value)
+  emit('sendMessage', props.isCrawlerOn)
 }
 
 // Set current page info when component mounts or URL changes
 function updatePageInfo() {
   if (props.currentUrl) {
-    setCurrentPageInfo({
-      url: props.currentUrl,
-      title: document.title || 'Current Page',
-    })
+    // setCurrentPageInfo({
+    //   url: props.currentUrl,
+    //   title: document.title || 'Current Page',
+    // })
   }
 }
 
@@ -192,7 +196,7 @@ watchEffect(() => {
               class="flex-1 resize-none border border-neutral-600 rounded-md px-3 py-2 text-sm bg-neutral-900 text-neutral-100 focus:outline-none focus:border-cyan-400 min-h-10 max-h-32 shadow-inner"
               rows="1"
               @input="$emit('update:currentMessage', ($event.target as HTMLTextAreaElement).value)"
-              @keydown="$emit('keyPress', $event, isCrawlerOn)"
+              @keydown="$emit('keyPress', $event, props.isCrawlerOn)"
             />
             <button
               class="text-cyan-400 text-2xl hover:text-cyan-300 transition-colors disabled:text-neutral-600"

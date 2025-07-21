@@ -1,7 +1,8 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
 import { crawlUrlWithCache } from '~/services/webCrawlerService'
 import { generateArticleAIResponse } from '~/services/aiService'
 import { useChatState } from '~/composables/useChatState'
+import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage'
 
 export function useSidepanelChat() {
   // State
@@ -16,6 +17,18 @@ export function useSidepanelChat() {
   const currentFileName = ref('Current Tab')
   const isCrawlerOn = ref(false)
   function setCrawlerOn(val: boolean) { isCrawlerOn.value = val }
+
+  // Lưu dữ liệu crawl vào storage theo url
+  const crawlStorageKey = computed(() => `crawl-content:${currentUrl.value}`)
+  const { data: crawlStorage, dataReady: crawlStorageReady } = useWebExtensionStorage<string>(crawlStorageKey.value, '')
+
+  // Xóa dữ liệu crawl khi url thay đổi (nếu crawler bật)
+  watch(currentUrl, (newUrl, oldUrl) => {
+    if (isCrawlerOn.value && oldUrl && oldUrl !== 'Đang tải...') {
+      const oldKey = `crawl-content:${oldUrl}`
+      chrome.storage.local.remove(oldKey)
+    }
+  })
 
   const { messages, currentMessage, setCurrentMessage, addMessage, clearMessages, undoMessage, redoMessage } = useChatState()
 
@@ -73,49 +86,54 @@ export function useSidepanelChat() {
         let articleContext = ''
         let articleAnalysis = ''
         if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
-          const results = await crawlUrlWithCache(currentUrl.value, {
-            maxDepth: 1,
-            maxPages: 1,
-            extractArticleData: true,
-            detectLanguage: true,
-            extractKeywords: true,
-          })
-          if (results.length > 0) {
-            const result = results[0]
-            articleContext = result.content
-            crawledContent.value = articleContext
-            if (result.article) {
-              const analysisParts = []
-              analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
-              if (result.article.author)
-                analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
-              if (result.article.readingTime)
-                analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
-              if (result.language) {
-                const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
-                analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
+          // Nếu đã có dữ liệu crawl trong storage thì dùng luôn
+          await crawlStorageReady
+          if (crawlStorage.value) {
+            articleContext = crawlStorage.value
+          } else {
+            const results = await crawlUrlWithCache(currentUrl.value, {
+              maxDepth: 1,
+              maxPages: 1,
+              extractArticleData: true,
+              detectLanguage: true,
+              extractKeywords: true,
+            })
+            if (results.length > 0) {
+              const result = results[0]
+              articleContext = result.content
+              crawledContent.value = articleContext
+              crawlStorage.value = articleContext // Lưu vào storage
+              if (result.article) {
+                const analysisParts = []
+                analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
+                if (result.article.author)
+                  analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
+                if (result.article.readingTime)
+                  analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
+                if (result.language) {
+                  const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
+                  analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
+                }
+                if (result.article.difficulty) {
+                  const difficultyMap = { easy: 'Dễ đọc', medium: 'Trung bình', hard: 'Khó đọc' }
+                  analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
+                }
+                if (result.keywords && result.keywords.length > 0) {
+                  analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
+                }
+                articleAnalysis = analysisParts.join('\n')
               }
-              if (result.article.difficulty) {
-                const difficultyMap = { easy: 'Dễ đọc', medium: 'Trung bình', hard: 'Khó đọc' }
-                analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
-              }
-              if (result.keywords && result.keywords.length > 0) {
-                analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
-              }
-              articleAnalysis = analysisParts.join('\n')
             }
           }
         }
         response = await generateCopilotResponse(messageText, articleContext, articleAnalysis)
       }
       addMessage({ role: 'assistant', content: response })
-    }
-    catch (error) {
+    } catch (error) {
       hasError.value = true
       errorMessage.value = error instanceof Error ? error.message : 'Lỗi không xác định'
       console.error('Lỗi khi gửi tin nhắn:', error)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
