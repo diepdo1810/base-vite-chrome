@@ -15,6 +15,7 @@ export const isFirefox = navigator.userAgent.includes('Firefox')
 
 interface ImportMetaEnv {
   readonly VITE_FIRECRAWL_API_KEY: string
+  readonly VITE_DIFFBOT_TOKEN: string
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv

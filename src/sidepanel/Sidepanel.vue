@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import ChatInterface from '~/components/ChatInterface.vue'
 import { useSidepanelChat } from '~/composables/useSidepanelChat'
 

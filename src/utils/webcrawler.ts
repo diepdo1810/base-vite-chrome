@@ -918,6 +918,26 @@ class WebCrawler {
   }
 }
 
+/**
+ * Extract article content using Diffbot Article API
+ * @param url string - URL bài báo cần extract
+ * @returns Promise<{ text: string, title?: string, date?: string }>
+ */
+export async function extractArticleWithDiffbot(url: string): Promise<{ text: string, title?: string, date?: string }> {
+  const token = import.meta.env.VITE_DIFFBOT_TOKEN ?? 'ca98ce1fa3c7527cd078ae009753e3dd'
+  if (!token)
+    throw new Error('Missing Diffbot token')
+  const apiUrl = `https://api.diffbot.com/v3/article?token=${token}&url=${encodeURIComponent(url)}&fields=text,title,date&discussion=false`
+  const response = await fetch(apiUrl)
+  if (!response.ok)
+    throw new Error(`Diffbot API error: ${response.status}`)
+  const data = await response.json()
+  const obj = data.objects?.[0]
+  if (!obj || !obj.text)
+    throw new Error('No article text found')
+  return { text: obj.text, title: obj.title, date: obj.date }
+}
+
 export default WebCrawler
 export {
   WebCrawler,

@@ -1,8 +1,8 @@
-import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
-import { crawlUrlWithCache } from '~/services/webCrawlerService'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { generateArticleAIResponse } from '~/services/aiService'
 import { useChatState } from '~/composables/useChatState'
 import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage'
+import { extractArticleWithDiffbot } from '~/utils/webcrawler'
 
 export function useSidepanelChat() {
   // State
@@ -19,7 +19,17 @@ export function useSidepanelChat() {
   function setCrawlerOn(val: boolean) { isCrawlerOn.value = val }
 
   // Lưu dữ liệu crawl vào storage theo url
-  const crawlStorageKey = computed(() => `crawl-content:${currentUrl.value}`)
+  const isValidUrl = computed(() => {
+    try {
+      const url = new URL(currentUrl.value)
+      return !!url
+    }
+    catch {
+      return false
+    }
+  })
+
+  const crawlStorageKey = computed(() => isValidUrl.value ? `crawl-content:${currentUrl.value}` : '')
   const { data: crawlStorage, dataReady: crawlStorageReady } = useWebExtensionStorage<string>(crawlStorageKey.value, '')
 
   // Xóa dữ liệu crawl khi url thay đổi (nếu crawler bật)
@@ -28,6 +38,10 @@ export function useSidepanelChat() {
       const oldKey = `crawl-content:${oldUrl}`
       chrome.storage.local.remove(oldKey)
     }
+    // Reset lại crawlStorage khi đổi URL để không dùng lại nội dung cũ
+    if (isValidUrl.value) {
+      crawlStorage.value = ''
+    }
   })
 
   const { messages, currentMessage, setCurrentMessage, addMessage, clearMessages, undoMessage, redoMessage } = useChatState()
@@ -35,10 +49,10 @@ export function useSidepanelChat() {
   function getCurrentTabUrl() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: { url: string }[]) => {
       if (tabs && tabs[0]) {
-        currentUrl.value = tabs[0].url || '';
-        updateFileName();
+        currentUrl.value = tabs[0].url || ''
+        updateFileName()
       }
-    });
+    })
   }
 
   function handleTabActivated() {
@@ -77,63 +91,49 @@ export function useSidepanelChat() {
         const aiRes = await generateArticleAIResponse({
           messages: [
             { role: 'system', content: 'Bạn là một trợ lý AI giúp phân tích, giải thích, tóm tắt hoặc trả lời các câu hỏi về đoạn văn bản do người dùng cung cấp. Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu, có thể dùng emoji.' },
-            { role: 'user', content: messageText }
+            { role: 'user', content: messageText },
           ],
-          model: 'openai'
+          model: 'openai',
         })
         response = aiRes.data?.content || 'Không nhận được phản hồi từ AI.'
-      } else {
+      }
+      else {
         let articleContext = ''
         let articleAnalysis = ''
         if (currentUrl.value && currentUrl.value !== 'Đang tải...') {
           // Nếu đã có dữ liệu crawl trong storage thì dùng luôn
           await crawlStorageReady
-          if (crawlStorage.value) {
+          if (isValidUrl.value && crawlStorage.value) {
             articleContext = crawlStorage.value
-          } else {
-            const results = await crawlUrlWithCache(currentUrl.value, {
-              maxDepth: 1,
-              maxPages: 1,
-              extractArticleData: true,
-              detectLanguage: true,
-              extractKeywords: true,
-            })
-            if (results.length > 0) {
-              const result = results[0]
-              articleContext = result.content
-              crawledContent.value = articleContext
-              crawlStorage.value = articleContext // Lưu vào storage
-              if (result.article) {
-                const analysisParts = []
-                analysisParts.push(`📰 Bài viết: "${result.article.title}"`)
-                if (result.article.author)
-                  analysisParts.push(`✍️ Tác giả: ${result.article.author}`)
-                if (result.article.readingTime)
-                  analysisParts.push(`⏱️ Thời gian đọc: ${result.article.readingTime} phút`)
-                if (result.language) {
-                  const langName = result.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'
-                  analysisParts.push(`🌐 Ngôn ngữ: ${langName}`)
-                }
-                if (result.article.difficulty) {
-                  const difficultyMap = { easy: 'Dễ đọc', medium: 'Trung bình', hard: 'Khó đọc' }
-                  analysisParts.push(`📊 Độ khó: ${difficultyMap[result.article.difficulty]}`)
-                }
-                if (result.keywords && result.keywords.length > 0) {
-                  analysisParts.push(`🏷️ Từ khóa chính: ${result.keywords.slice(0, 5).join(', ')}`)
-                }
-                articleAnalysis = analysisParts.join('\n')
-              }
-            }
+          }
+          else if (isValidUrl.value) {
+            // Sử dụng Diffbot để extract nội dung
+            const diffbotResult = await extractArticleWithDiffbot(currentUrl.value)
+            articleContext = diffbotResult.text
+            crawledContent.value = articleContext
+            crawlStorage.value = articleContext // Lưu vào storage
+
+            // Tạo phần phân tích đơn giản từ kết quả Diffbot
+            const analysisParts = []
+            if (diffbotResult.title)
+              analysisParts.push(`📰 Bài viết: "${diffbotResult.title}"`)
+
+            if (diffbotResult.date)
+              analysisParts.push(`🗓️ Ngày đăng: ${diffbotResult.date}`)
+
+            articleAnalysis = analysisParts.join('\n')
           }
         }
         response = await generateCopilotResponse(messageText, articleContext, articleAnalysis)
       }
       addMessage({ role: 'assistant', content: response })
-    } catch (error) {
+    }
+    catch (error) {
       hasError.value = true
       errorMessage.value = error instanceof Error ? error.message : 'Lỗi không xác định'
       console.error('Lỗi khi gửi tin nhắn:', error)
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }
@@ -157,7 +157,8 @@ export function useSidepanelChat() {
         else {
           throw new Error(result.error || 'Failed to analyze article')
         }
-      } catch (error) {
+      }
+      catch (error) {
         console.error('Error calling Pollinations AI:', error)
         return `Xin lỗi, tôi gặp lỗi khi phân tích bài viết: ${error instanceof Error ? error.message : 'Unknown error'}`
       }
