@@ -1,10 +1,10 @@
 {
-  "name": "vitesse-webext",
-  "displayName": "Vitesse WebExt",
+  "name": "web-smart-assistant",
+  "displayName": "Trợ Lý Web Thông Minh",
   "version": "0.0.1",
   "private": true,
   "packageManager": "pnpm@9.7.1",
-  "description": "[description]",
+  "description": "Trợ lý AI thông minh giúp phân tích, trò chuyện và khám phá nội dung web. Hỗ trợ chat với AI, phân tích bài viết, và đề xuất thông minh.",
   "scripts": {
     "dev": "npm run clear && cross-env NODE_ENV=development run-p dev:*",
     "dev-firefox": "npm run clear && cross-env NODE_ENV=development EXTENSION=firefox run-p dev:*",
@@ -63,6 +63,7 @@
     "lint-staged": "^15.2.9",
     "npm-run-all": "^4.1.5",
     "rimraf": "^6.0.1",
+    "sharp": "^0.34.3",
     "simple-git-hooks": "^2.11.1",
     "typescript": "^5.5.4",
     "unocss": "^0.62.2",

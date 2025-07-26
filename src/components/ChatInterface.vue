@@ -80,9 +80,9 @@ watchEffect(() => {
         <div class="flex-1 min-h-0 flex flex-col">
           <!-- Empty State / Welcome Screen -->
           <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center space-y-6">
-            <!-- Copilot Icon -->
-            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center shadow-lg">
-              <span class="i-ic:round-smart-toy text-white text-5xl" />
+            <!-- Smart Assistant Icon -->
+            <div class="w-20 h-20 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+              <span class="i-mdi:owl text-white text-5xl" />
             </div>
 
             <!-- Title -->
@@ -118,7 +118,7 @@ watchEffect(() => {
                 </div>
                 <!-- Assistant Message -->
                 <div v-else class="flex w-full justify-start items-start gap-2 mt-2">
-                  <span class="i-ic:round-smart-toy text-cyan-400 text-2xl mt-1" />
+                  <span class="i-mdi:owl text-cyan-400 text-2xl mt-1" />
                   <div class="max-w-[70%] bg-neutral-700 text-neutral-100 rounded-2xl rounded-bl-md px-5 py-3 shadow-lg text-base font-medium animate-fade-in prose prose-invert break-words" v-html="md.render(message.content)"></div>
                 </div>
               </div>
@@ -126,7 +126,7 @@ watchEffect(() => {
             <!-- Loading indicator -->
             <div v-if="isLoading">
               <div class="flex items-center gap-2 mb-2 pb-2 border-b border-neutral-700">
-                <span class="i-ic:round-smart-toy text-cyan-400 text-xl" />
+                <span class="i-mdi:owl text-cyan-400 text-xl" />
                 <span class="font-medium text-neutral-100">AI Assistant</span>
               </div>
               <div class="flex items-center gap-2 text-cyan-300">
@@ -166,6 +166,7 @@ watchEffect(() => {
                 Trả Lời
               </button>
               <button
+                disabled
                 class="px-4 py-2 text-sm font-medium rounded-r transition-colors"
                 :class="chatMode === 'Agent' ? 'bg-neutral-800 shadow-sm border-l border-neutral-600 text-cyan-400' : 'text-neutral-400'"
                 @click="$emit('update:chatMode', 'Agent')"
@@ -174,7 +175,7 @@ watchEffect(() => {
               </button>
             </div>
             <!-- Model Selection -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2" v-if="false">
               <select
                 :value="selectedModel"
                 class="text-sm border border-neutral-600 rounded px-3 py-2 bg-neutral-800 text-neutral-100 focus:outline-none focus:border-cyan-400 min-w-40"

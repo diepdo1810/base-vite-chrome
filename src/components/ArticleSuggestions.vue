@@ -64,7 +64,7 @@ defineEmits<Emits>()
           class="flex items-center gap-3 w-full px-4 py-3 rounded-lg border border-transparent bg-neutral-900 text-neutral-100 hover:bg-cyan-950 hover:border-cyan-400 transition-all duration-150 text-left shadow group disabled:opacity-60 disabled:cursor-not-allowed"
           @click="$emit('smartSuggestionClick', sug)"
         >
-          <span class="i-ic:round-lightbulb text-yellow-400 text-xl flex-shrink-0" />
+          <span class="i-mdi:owl text-yellow-400 text-xl flex-shrink-0" />
           <span class="flex-1 text-base leading-snug">{{ sug }}</span>
         </button>
       </template>
