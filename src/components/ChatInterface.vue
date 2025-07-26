@@ -70,7 +70,8 @@ watchEffect(() => {
     <div class="w-full max-w-xl h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-neutral-800 border border-neutral-700 overflow-hidden">
       <!-- Header -->
       <div class="bg-neutral-800 border-b border-neutral-700 px-4 py-3 text-center font-semibold text-neutral-100 tracking-wide text-lg">
-        AI CHAT
+        Trợ Lý Web Thông Minh
+        <div class="text-xs text-cyan-300 font-normal mt-1">Phân Tích - Trò Chuyện - Khám Phá</div>
       </div>
 
       <!-- Main Content Area -->
@@ -86,24 +87,22 @@ watchEffect(() => {
 
             <!-- Title -->
             <h2 class="text-2xl font-semibold text-neutral-100">
-              Ask AI
+              Trợ Lý Web Thông Minh
             </h2>
+            <div class="text-xs text-cyan-300 font-normal mt-1">Phân Tích - Trò Chuyện - Khám Phá</div>
 
-            <!-- Description -->
-            <p class="text-neutral-300 max-w-sm leading-relaxed">
-              AI is powered by advanced models, so mistakes are possible.<br>
-              Review output carefully before use.
-            </p>
-
-            <!-- Helper Text -->
-            <div class="text-sm text-neutral-400 space-y-2">
-              <p>📎 or type # to attach context</p>
-              <p>📡 @ to chat with extensions</p>
-              <p class="ml-4">
-                Type / to use commands
-              </p>
+            <!-- Main Features (compact) -->
+            <div class="text-base text-cyan-300 space-x-4 font-medium flex items-center justify-center">
+              <span>🌐 Phân tích</span>
+              <span>🔍 Đề xuất</span>
+              <span>💬 Chat</span>
+              <span>⚡ Nhanh</span>
             </div>
-            <!-- ArticleSuggestions đã bị ẩn -->
+
+            <!-- Commands (compact) -->
+            <div class="text-sm text-neutral-400 mt-2">
+              # web context  @ extensions  / commands
+            </div>
           </div>
 
           <!-- Chat Messages -->
@@ -111,7 +110,7 @@ watchEffect(() => {
             <transition-group name="fade-chat" tag="div">
               <div v-for="(message, index) in messages" :key="index" class="w-full flex">
                 <!-- User Message -->
-                <div v-if="message.role === 'user'" class="flex w-full justify-end items-start gap-2">
+                <div v-if="message.role === 'user'" class="flex w-full justify-end items-start gap-2 mt-2">
                   <div class="max-w-[70%] bg-cyan-500 text-white rounded-2xl rounded-br-md px-5 py-3 shadow-lg text-base font-medium ml-auto animate-fade-in">
                     {{ message.content }}
                   </div>
@@ -148,12 +147,12 @@ watchEffect(() => {
               :class="isCrawlerOn ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-neutral-400 text-neutral-800 hover:bg-neutral-500'"
               @click="handleToggleCrawler"
             >
-              {{ isCrawlerOn ? '🕷️ Đang bật Crawler (kèm nội dung bài báo)' : 'Tắt Crawler (chỉ chat AI)' }}
+              {{ isCrawlerOn ? '🧭 Đang phân tích trang (kèm nội dung bài báo)' : 'Bắt Đầu Phân Tích' }}
             </button>
           </div>
           <!-- Ask AI Row -->
           <div class="flex items-center justify-between">
-            <span class="text-neutral-400 text-sm">Ask AI</span>
+            <span class="text-neutral-400 text-sm">Hỏi AI</span>
           </div>
           <!-- Controls Row -->
           <div class="flex items-center gap-4">
@@ -164,14 +163,14 @@ watchEffect(() => {
                 :class="chatMode === 'Ask' ? 'bg-neutral-800 shadow-sm border-r border-neutral-600 text-cyan-400' : 'text-neutral-400'"
                 @click="$emit('update:chatMode', 'Ask')"
               >
-                Ask
+                Trả Lời
               </button>
               <button
                 class="px-4 py-2 text-sm font-medium rounded-r transition-colors"
                 :class="chatMode === 'Agent' ? 'bg-neutral-800 shadow-sm border-l border-neutral-600 text-cyan-400' : 'text-neutral-400'"
                 @click="$emit('update:chatMode', 'Agent')"
               >
-                Agent
+                Trợ Lý
               </button>
             </div>
             <!-- Model Selection -->
@@ -192,7 +191,7 @@ watchEffect(() => {
             <span class="text-neutral-500 text-lg">@</span>
             <textarea
               :value="currentMessage"
-              placeholder="Ask AI..."
+              placeholder="Hỏi gì đó về trang web này..."
               class="flex-1 resize-none border border-neutral-600 rounded-md px-3 py-2 text-sm bg-neutral-900 text-neutral-100 focus:outline-none focus:border-cyan-400 min-h-10 max-h-32 shadow-inner"
               rows="1"
               @input="$emit('update:currentMessage', ($event.target as HTMLTextAreaElement).value)"
